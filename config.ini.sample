@@ -1,0 +1,18 @@
+# disqus-specific settings
+api_secret=get_api_secret_from_disqus_admin_panel
+disqus_forum=disqus_forum_short_name
+
+# local database config
+db_name=database_name
+db_user=database_user
+db_pass=database_password
+
+# error logging
+# FATAL = 0
+# ERROR = 1
+# WARN  = 2
+# INFO  = 3
+# DEBUG = 4
+# DEBUGAPI = 5
+error_log=log_file_name
+error_log_level=2
