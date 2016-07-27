@@ -1,2 +1,4 @@
 # ignoring PHPStorm
 .idea
+config.ini
+error_log
