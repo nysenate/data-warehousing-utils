@@ -87,11 +87,11 @@ class API_Object {
   protected function fetchCursor() {
     // Try to read cursor information from the db.
     try {
-    $cursor_value = db_select('settings', 's')
-      ->fields('s', array('value'))
-      ->condition('name', static::getCursorName())
-      ->execute()
-      ->fetchField();
+      $cursor_value = db_select('settings', 's')
+        ->fields('s', array('value'))
+        ->condition('name', static::getCursorName())
+        ->execute()
+        ->fetchField();
     }
     catch (Exception $e) {
       $this->log->log("Exception generated during cursor SELECT:\nCode: ".var_export($e->getCode(),1)."\nMessage: ".var_export($e->getMessage(),1), NYSS_LOG_LEVEL_ERROR);
