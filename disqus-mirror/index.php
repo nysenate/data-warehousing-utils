@@ -8,7 +8,11 @@
 require_once 'lib.require.inc';
 
 // instantiate the configuration and the logger
-$config = Config::getInstance();
+try {
+  $config = Config::getInstance();
+} catch (Exception $e) {
+  die("FATAL: " . $e->getMessage() . "\n" . Config::getUsage());
+}
 $logger = Logger::getInstance($config->error_log_level, $config->error_log,'.',NYSS_LOG_MODE_TEE);
 
 // debug log for runtime config

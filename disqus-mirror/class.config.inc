@@ -8,34 +8,38 @@ class Config extends ConfigBase {
    *            'label' => <string>,
    *            'short' => <character>,
    *            'description' => <string>
+   *            'required' => <boolean>
    *            )
    *   )
    * 'index' = the index name to use in Config->options
    * 'val' = if a value is required (0 = No, 1 = Yes, 2 = Optional)
    * 'label' = a user-friendly name for this option
    * 'short' = an optional, single-character shortcut (e.g., -h vs --help)
-   * 'description = a user-friendly description for this option
+   * 'description' = a user-friendly description for this option
+   * 'required' = indicates if this option must be specified (by CLI or file)
    **/
   protected static $_available_command_options = array(
-    'config' => array(
-      'index' => 'config_file',
+    'config_file' => array(
       'val' => 1,
       'label' => 'Config file',
       'short' => 'c',
       'description' => "File holding all runtime configurations",
+      'required' => TRUE,
+      'default' => 'config.ini'
     ),
-    'forum' => array(
-      'index' => 'disqus_forum',
+    'disqus_forum' => array(
       'val' => 1,
       'label' => 'Disqus Forum',
       'short' => 'f',
       'description' => "The shortname of the Disqus forum to reference in API calls",
+      'required' => TRUE,
     ),
     'help' => array(
-      'index' => 'help',
       'val' => 0,
       'label' => 'Help',
       'description' => 'This help text',
+      'required' => FALSE,
     ),
   );
+
 }
