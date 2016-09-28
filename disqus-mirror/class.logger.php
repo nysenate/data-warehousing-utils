@@ -98,6 +98,13 @@ class Logger
     return $message;
   }
 
+  /**
+   * @param int $lvl
+   * @param string $fn
+   * @param null $loc
+   * @param int $mode
+   * @return Logger
+   */
   public static function getInstance($lvl=NYSS_LOG_LEVEL_ERROR, $fn='', $loc = NULL, $mode=NYSS_LOG_MODE_FILE) {
     if (!static::$instance) {
       static::$instance = new static($lvl, $fn, $loc, $mode);

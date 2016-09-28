@@ -10,12 +10,20 @@
  * passed in during runtime.
  *
  * This class should be extended for the application using it.  The child
- * class must provide its own definition for self::$_available_command_options.
+ * class must provide its own definition for $_available_command_options.
+ * Note that options already populated in self::$_standard_command_options
+ * are automatically added to the parser, but may be overridden.
+ *
+ * The order of precedence for found options, from least to greatest:
+ *   1. default values
+ *   2. values passed to the constructor
+ *   3. values read from the configuration file
+ *   4. values read from the command line
  */
 class ConfigBase {
 
   /**
-   * Available options array.  Structure is:
+   * Standard options.  The available options array uses the same structure:
    *   array( <long_option_name> = array(
    *            'index' => <string>,
    *            'val'   => ( 0 | 1 | 2 ),
@@ -24,18 +32,54 @@ class ConfigBase {
    *            'description' => <string>
    *            )
    *   )
-   * 'index' = the index name to use in Config->options
-   * 'val' = if a value is required (0 = No, 1 = Yes, 2 = Optional)
-   * 'label' = a user-friendly name for this option
-   * 'short' = an optional, single-character shortcut (e.g., -h vs --help)
-   * 'description' = a user-friendly description for this option
-   * 'required' = indicates if this option must be specified (by CLI or file)
-   * 'default' = default value assigned if no other value is provided
+   * 'index'       = the index name to use in Config->options.  If not provided,
+   *                 defaults to <long_option_name>.  In all cases, the value
+   *                 is scrubbed to replace all non-alpha characters with '_',
+   *                 and formatted as all lower-case.
+   * 'val'         = if a value is required (0 = No, 1 = Yes, 2 = Optional).  If
+   *                 not provided, it is set to zero.
+   * 'label'       = a user-friendly name for this option.  If not provided, it
+   *                 is set to index.
+   * 'short'       = an optional, single-character shortcut (e.g., -h vs --help).
+   *                 If not provided, it is set to empty string.
+   * 'description' = a user-friendly description for this option.  If not provided
+   *                 it is set to empty string.
+   * 'required'    = indicates if this option must be specified (by CLI or file).
+   *                 If not provided, it is set to FALSE.
+   * 'default'     = default value assigned if no other value is provided.  If
+   *                 not provided, it is set to NULL.
    **/
-  protected static $_available_command_options = array();
+  protected static $_standard_command_options = array(
+    'config-file' => array(
+      'val' => 1,
+      'label' => 'Config file',
+      'short' => 'c',
+      'description' => "File holding all runtime configurations",
+      'required' => FALSE,
+      'default' => 'config.ini'
+    ),
+    'test-config' => array(
+      'val' => 0,
+      'label' => 'Test configuration settings',
+      'description' => "Loads and parses configuration, then reports findings and exits",
+      'required' => FALSE,
+    ),
+    'help' => array(
+      'val' => 0,
+      'label' => 'Help',
+      'description' => 'This help text',
+      'required' => FALSE,
+    ),
+  );
 
-  // Default configuration file.
-  protected static $_default_config_file = 'config.ini';
+  // Instance property for singleton pattern
+  protected static $_instance = array();
+
+  // command line options assigned by child classes.
+  protected $_available_command_options = array();
+
+  // Collection of options used at runtime.
+  protected $_runtime_command_options = array();
 
   // Resolved configuration array
   protected $options = array();
@@ -43,72 +87,41 @@ class ConfigBase {
   // Raw command line options
   protected $cli_options = array();
 
-  // Instance property for singleton pattern
-  protected static $_instance = array();
-
   // Ensures config file is only read once.
   private $_config_loaded = FALSE;
-
-  public static function getUsage() {
-    $msg = array();
-    foreach (static::$_available_command_options as $key=>$val) {
-      $onemsg = '';
-      if (array_ifelse('short',$val)) {
-        $onemsg = "-{$val['short']} | ";
-      }
-      $onemsg .= "--{$key}";
-      if (!array_ifelse('required',$val)) {
-        $onemsg = "[$onemsg]";
-      } else {
-        $onemsg .= "  (required)";
-      }
-      $onemsg .= " {$val['label']}\n{$val['description']}";
-      if (array_ifelse('default',$val)) {
-        $onemsg .= " Default: {$val['default']}";
-      }
-      $msg[] = $onemsg;
-    }
-    return "\n\nUsage: \n\n" . implode("\n\n", $msg) . "\n";
-  }
 
   /**
    * Config constructor.
    * @param array $options
    */
   protected function __construct(Array $options = array()) {
+    // consolidate available options into the runtime selection
+    $this->_runtime_command_options = array_merge(
+      $this->_available_command_options,
+      static::$_standard_command_options
+    );
+    
+    // Make sure the runtime options are in a usable state, and retrieve defaults
+    $defaults = array_map(function($v){return $v['default'];}, $this->polishOptions());
+
     // initialize CLI options
-    $this->cli_options = ((php_sapi_name() == 'cli') ? static::parse_cli_options() : array());
+    $this->cli_options = ((php_sapi_name() == 'cli') ? $this->parseCliOptions() : array());
     if (array_ifelse('help', $this->cli_options, FALSE)) {
-      die(static::getUsage());
+      die($this->getUsage());
     }
 
-    // merge with passed options
-    $this->options = array_merge(
-      array_map(function($v){return array_ifelse('default',$v,'');}, static::$_available_command_options),
-      $options,
-      $this->cli_options
-    );
+    // Merge the options so far to get the proper value of config_file
+    $this->options = array_merge($defaults, $options);
+    $this->options['config_file'] = array_ifelse('config_file', $this->cli_options, $this->options['config_file']);
 
     // read the config file
     $conf_options = $this->readConfig();
-    $this->options = array_merge($conf_options, $this->options);
+
+    // Re-merge to get the complete set of options
+    $this->options = array_merge($this->options, $conf_options, $this->cli_options);
 
     // validate required config
     $this->validateConfig();
-  }
-
-  public static function getInstance(Array $options = array()) {
-    $classname = get_called_class();
-    if (array_key_exists($classname, self::$_instance)) {
-      $ret = self::$_instance[$classname];
-    } else {
-      $ret = new $classname($options);
-      self::$_instance[$classname] = $ret;
-    }
-    if ($options) {
-      $ret->options = array_merge($ret->options, $options);
-    }
-    return $ret;
   }
 
   public function __get($name) {
@@ -116,43 +129,47 @@ class ConfigBase {
     return $ret;
   }
 
-  protected function readConfig($refresh = FALSE) {
-    // Read the config file and add anything found to the options
-    $ret = array();
-    if (!$this->_config_loaded || $refresh) {
-      $ini = @parse_ini_file($this->options['config_file']);
-      $this->_config_loaded = TRUE;
-      if ($ini) {
-        foreach ($ini as $key => $val) {
-          // Don't allow the config file to reset the config_file option.
-          if ($key !== 'config_file') {
-            $ret[$key] = $val;
-          }
-        }
-      }
-      else {
-        echo "WARNING: Config file {$this->options['config_file']} is missing or blank!\n";
-      }
+  /**
+   * @param array $options
+   * @return ConfigBase
+   */
+  public static function getInstance(Array $options = array()) {
+    $class_name = get_called_class();
+    if (array_key_exists($class_name, self::$_instance)) {
+      $ret = self::$_instance[$class_name];
+    } else {
+      $ret = new $class_name($options);
+      self::$_instance[$class_name] = $ret;
+    }
+    if ($options) {
+      $ret->options = array_merge($ret->options, $options);
     }
     return $ret;
   }
 
-  protected function validateConfig($error_on_invalid = TRUE) {
-    $has_error = array();
-    foreach (static::$_available_command_options as $key=>$req_index) {
-      if ($req_index['required'] && !array_ifelse($key, $this->options, FALSE)) {
-        echo "ERROR: Missing config parameter $key!\n";
-        $has_error[] = $key;
+  public function getUsage() {
+    $msg = array();
+    foreach ($this->_runtime_command_options as $key=>$val) {
+      $onemsg = '';
+      if (array_ifelse('short',$val)) {
+        $onemsg = "-{$val['short']} | ";
       }
+      $onemsg .= "--{$key}";
+      if (!array_ifelse('required', $val)) {
+        $onemsg = "[$onemsg]";
+      } else {
+        $onemsg .= "  (required)";
+      }
+      $onemsg .= " {$val['label']}\n{$val['description']}";
+      if (array_ifelse('default', $val)) {
+        $onemsg .= " Default: {$val['default']}";
+      }
+      $msg[] = $onemsg;
     }
-
-    if (count($has_error) && $error_on_invalid) {
-      $msg = implode(',',$has_error);
-      throw new RuntimeException("Invalid/Missing configuration items: $msg");
-    }
+    return "\nUsage: \n\n" . implode("\n\n", $msg) . "\n";
   }
 
-  protected static function parse_cli_options() {
+  protected function parseCliOptions() {
     // string of short option characters, e.g., -c -h -a
     $shortopts = '';
     // array of long option names, e.g., --help --config
@@ -160,9 +177,8 @@ class ConfigBase {
     // a convenience array to reverse map short options to long options
     $opt_map = array();
 
-    // The static declared above should hold *all* available options possible.
-    // Iterate through them to build the short/long lists.
-    foreach (static::$_available_command_options as $key => $val) {
+    // Iterate through the collection of options to build the short/long lists.
+    foreach ($this->_runtime_command_options as $key => $val) {
       // Force-type the 'val' property to integer.
       // 0 = Not required, 1 = Required, 2 = Optional
       $v = (int)$val['val'];
@@ -191,18 +207,126 @@ class ConfigBase {
       $long_key = array_key_exists($key, $opt_map) ? $opt_map[$key] : $key;
 
       // If the long key exists, add it to the return
-      if (array_key_exists($long_key, static::$_available_command_options)) {
+      if (array_key_exists($long_key, $this->_runtime_command_options)) {
+        $found_index = $this->_runtime_command_options[$long_key]['index'];
         // The return key is the 'index' property of this option's definition.
-        $ret[$long_key] = $val;
+        $ret[$found_index] = $val;
         // Options which don't require values get set to boolean false by
         // getopt().  Correct this to show the option is selected.
-        if (static::$_available_command_options[$long_key]['val'] == 0) {
-          $ret[$long_key] = TRUE;
+        if ($this->_runtime_command_options[$long_key]['val'] == 0) {
+          $ret[$found_index] = TRUE;
         }
       }
     }
 
     return $ret;
+  }
+
+  /**
+   * Washes the runtime command options array to make sure its entries play nice.
+   */
+  protected function polishOptions() {
+    $ret = array();
+    foreach ($this->_runtime_command_options as $key => $val) {
+      // Make sure the index exists, and that it has a friendly name.
+      if (!array_key_exists('index', $val)) {
+        $val['index'] = $key;
+      }
+      $val['index'] = strtolower(preg_replace('/[^a-z]/i', '_', $val['index']));
+
+      // Make sure val is present
+      if (!array_key_exists('val', $val)) {
+        $val['val'] = 0;
+      }
+
+      // Make sure label is present and has some value
+      if (!array_key_exists('label', $val)) {
+        $val['label'] = $val['index'];
+      }
+
+      // Make sure short is present
+      if (!array_key_exists('short', $val)) {
+        $val['short'] = '';
+      }
+
+      // Make sure description is present
+      if (!array_key_exists('description', $val)) {
+        $val['description'] = '';
+      }
+
+      // Make sure required is present
+      if (!array_key_exists('required', $val)) {
+        $val['required'] = FALSE;
+      }
+
+      // Make sure default is present
+      if (!array_key_exists('default', $val)) {
+        $val['default'] = NULL;
+      }
+
+      // Add the polished version to the return
+      $this->_runtime_command_options[$key] = $val;
+      $ret[$val['index']] = $val;
+    }
+    return $ret;
+  }
+
+  protected function readConfig($refresh = FALSE) {
+    // Prep the return
+    $ret = array();
+
+    // Set the config filename to be used
+    $ini_file = array_ifelse('config_file', $this->options, 'config.ini');
+
+    // Read the configuration file, if necessary
+    if (!$this->_config_loaded || $refresh) {
+      $ini = @parse_ini_file($ini_file);
+      $this->_config_loaded = TRUE;
+      if ($ini) {
+        foreach ($ini as $key => $val) {
+          // Don't allow the config file to reset the config_file option.
+          if ($key !== 'config_file') {
+            $ret[$key] = $val;
+          }
+        }
+      } else {
+        echo "WARNING: Config file '{$ini_file}' is missing or blank!\n";
+      }
+    }
+    return $ret;
+  }
+
+  protected function validateConfig($error_on_invalid = TRUE) {
+    // Don't throw an exception if testing the config.
+    if ($this->options['test_config']) {
+      $error_on_invalid = FALSE;
+    }
+
+    // Test for required values.
+    $has_error = array();
+    foreach ($this->_runtime_command_options as $key=>$one_option) {
+      if ($one_option['required'] && !array_ifelse($key, $this->options, FALSE)) {
+        echo "ERROR: Missing config parameter $key!\n";
+        $has_error[] = $key;
+      }
+    }
+
+    // If there's an error, and we care, throw an exception
+    if (count($has_error) && $error_on_invalid) {
+      echo $this->getUsage()."\n\n";
+      $msg = implode(',',$has_error);
+      throw new RuntimeException("Invalid/Missing configuration items: $msg");
+    }
+
+    // If the config is being tested, report and die()
+    if ($this->options['test_config']) {
+      if (!$has_error) {
+        echo "Configuration tested OK\n".var_export($this->options,1)."\n\n";
+      } else {
+        echo "Configuration test FAILED!\n";
+      }
+      die();
+    }
   }
 
 }

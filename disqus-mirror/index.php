@@ -11,13 +11,12 @@ require_once 'lib.require.inc';
 try {
   $config = Config::getInstance();
 } catch (Exception $e) {
-  die("FATAL: " . $e->getMessage() . "\n" . Config::getUsage());
+  die("FATAL: " . $e->getMessage() . "\n");
 }
-$logger = Logger::getInstance($config->error_log_level, $config->error_log,'.',NYSS_LOG_MODE_TEE);
+$logger = Logger::getInstance($config->error_log_level, $config->error_log, '.', NYSS_LOG_MODE_TEE);
 
 // debug log for runtime config
 $logger->log("Runtime Config:\n".var_export($config,1), NYSS_LOG_LEVEL_DEBUG);
-//var_export($config);echo"\n\n";die();
 
 // necessary setup for Drupal's DAL
 $databases['default']['default'] = array(
