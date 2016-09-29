@@ -16,7 +16,7 @@ try {
 $logger = Logger::getInstance($config->error_log_level, $config->error_log, '.', NYSS_LOG_MODE_TEE);
 
 // debug log for runtime config
-$logger->log("Runtime Config:\n".var_export($config,1), NYSS_LOG_LEVEL_DEBUG);
+$logger->log("Runtime Config:\n".var_export($config->getOptions(),1), NYSS_LOG_LEVEL_DEBUG);
 
 // necessary setup for Drupal's DAL
 $databases['default']['default'] = array(
@@ -24,13 +24,49 @@ $databases['default']['default'] = array(
   'database' => $config->db_name,
   'username' => $config->db_user,
   'password' => $config->db_pass,
-  'host'     => 'localhost',
+  'host'     => $config->db_host,
+  'port'     => $config->db_port
 );
-db_query("set names utf8mb4;");
+
+// This will a) ensure the connection can be made, and b) ensure proper encoding
+// is maintained.
+try {
+  $set_names_query = db_query("set names utf8mb4;");
+} catch (Exception $e) {
+  $logger->log("Could not run 'SET NAMES' on connection! (".$e->getMessage().")", NYSS_LOG_LEVEL_FATAL);
+  exit(1);
+}
+
+// If the create tables is detected, run the SQL file and leave.
+if ($config->create_tables) {
+  $logger->log("Creating tables based on SQL in file: {$config->create_tables}", NYSS_LOG_LEVEL_DEBUG);
+
+  // Should not run multi-statement queries, so explode the contents and run
+  // them one by one.
+  $sql = explode(';', @file_get_contents($config->create_tables));
+  $result = TRUE;
+  try {
+    foreach ($sql as $statement) {
+      $q = trim($statement);
+      if ($q) {
+        $result &= db_query($statement);
+      }
+    }
+  } catch (Exception $e) {
+    $logger->log("Create tables task failed: " . $e->getMessage(), NYSS_LOG_LEVEL_FATAL);
+    $result = FALSE;
+  } finally {
+    if ($result) {
+      $msg = "Tables successfully created from file {$config->create_tables}.";
+      $logger->log($msg, NYSS_LOG_LEVEL_INFO);
+      echo $msg."\n";
+    }
+  }
+  exit(!$result);
+}
 
 // instantiate Disqus API
 $disqus = new DisqusAPI($config->api_secret);
-
 
 // run categories
 $a = new API_Object_Categories($disqus);
