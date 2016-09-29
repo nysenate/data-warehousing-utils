@@ -19,6 +19,21 @@ const NYSS_LOG_MODE_TEE    = 2;
 
 class Logger
 {
+  public static $LOG_LEVELS = array(
+    'FATAL' => NYSS_LOG_LEVEL_FATAL,
+    'ERROR' => NYSS_LOG_LEVEL_ERROR,
+    'WARN' =>  NYSS_LOG_LEVEL_WARN,
+    'INFO' =>  NYSS_LOG_LEVEL_INFO,
+    'DEBUG' => NYSS_LOG_LEVEL_DEBUG,
+  );
+  public static $LOG_LEVEL_LABELS = array(
+    NYSS_LOG_LEVEL_FATAL => 'FATAL',
+    NYSS_LOG_LEVEL_ERROR => 'ERROR',
+    NYSS_LOG_LEVEL_WARN  => 'WARN',
+    NYSS_LOG_LEVEL_INFO  => 'INFO',
+    NYSS_LOG_LEVEL_DEBUG => 'DEBUG',
+  );
+
   private static $instance = NULL;
 
   private   $_logfile     = NULL;
@@ -28,6 +43,7 @@ class Logger
   protected $log_mode     = NYSS_LOG_MODE_FILE;
 
   private function __construct($lvl=NYSS_LOG_LEVEL_ERROR, $fn='', $loc = NULL, $mode=NYSS_LOG_MODE_FILE) {
+    $lvl = array_ifelse($lvl, static::$LOG_LEVELS, $lvl);
     $this->setLevel($lvl);
     $this->setMode($mode);
     $this->setLogLocation($loc,$fn);
@@ -174,18 +190,11 @@ class Logger
   }
 
   public function log($msg, $lvl=NYSS_LOG_LEVEL_INFO) {
-    static $labels = array(
-                            NYSS_LOG_LEVEL_FATAL => 'FATAL',
-                            NYSS_LOG_LEVEL_ERROR => 'ERROR',
-                            NYSS_LOG_LEVEL_WARN  => 'WARN',
-                            NYSS_LOG_LEVEL_INFO  => 'INFO',
-                            NYSS_LOG_LEVEL_DEBUG => 'DEBUG',
-                          );
     $lvl = (int)$lvl;
     if ($lvl < 0) { $lvl = 0; }
     if ($lvl <= $this->log_level) {
       $datestr = date('Y-m-d H:i:s');
-      $lvllabel = array_ifelse($lvl,$labels,'CUSTOM');
+      $lvllabel = array_ifelse($lvl, static::$LOG_LEVEL_LABELS, 'CUSTOM');
       $msg = (string)$msg;
       $logmsg =  "[$lvllabel] $msg";
       if ($this->_isUsingStdout()) {
@@ -206,7 +215,7 @@ class Logger
   }
 
   public function setLevel($lvl=NYSS_LOG_LEVEL_ERROR) {
-    $lvl = (int)$lvl;
+    $lvl = (int) array_ifelse($lvl, static::$LOG_LEVELS, $lvl);
     if ($lvl < 1) { $lvl = 0; }
     $this->log_level = $lvl;
   }
