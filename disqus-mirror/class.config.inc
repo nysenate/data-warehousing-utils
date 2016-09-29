@@ -26,6 +26,12 @@ class Config extends ConfigBase {
       'description' => "The shortname of the Disqus forum to reference in API calls",
       'required' => TRUE,
     ),
+    'create-tables' => array(
+      'val' => 1,
+      'label' => 'Create DB Tables',
+      'description' => 'Force the script to run the SQL necessary to create the underlying database tables.  The script will exit once the queries are complete. Requires a secondary value of the filename containing the SQL.',
+      'required' => FALSE,
+    )
   );
 
 }

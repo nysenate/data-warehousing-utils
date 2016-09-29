@@ -188,7 +188,7 @@ class ConfigBase {
 
       // If the long option defines a shortcut, create the short option entry.
       // Also, add it to the reverse map for future reference.
-      if (array_ifelse('short', $val, FALSE)) {
+      if ($val['short']) {
         $shortopts .= $val['short'] . ($v > 0 ? ':' : '') . ($v > 1 ? ':' : '');
         $opt_map[$val['short']] = $key;
       }
@@ -208,12 +208,16 @@ class ConfigBase {
 
       // If the long key exists, add it to the return
       if (array_key_exists($long_key, $this->_runtime_command_options)) {
-        $found_index = $this->_runtime_command_options[$long_key]['index'];
+        $current_option = $this->_runtime_command_options[$long_key];
+        $found_index = $current_option['index'];
+
         // The return key is the 'index' property of this option's definition.
         $ret[$found_index] = $val;
-        // Options which don't require values get set to boolean false by
-        // getopt().  Correct this to show the option is selected.
-        if ($this->_runtime_command_options[$long_key]['val'] == 0) {
+
+        // Options which don't require values (and options with unpassed
+        // optional values) are set to boolean false by getopt().  Correct
+        // this to show the option is selected.
+        if ($current_option['val'] == 0 || ($current_option['val'] == 2 && !$ret[$found_index])) {
           $ret[$found_index] = TRUE;
         }
       }
@@ -229,40 +233,21 @@ class ConfigBase {
     $ret = array();
     foreach ($this->_runtime_command_options as $key => $val) {
       // Make sure the index exists, and that it has a friendly name.
-      if (!array_key_exists('index', $val)) {
-        $val['index'] = $key;
-      }
-      $val['index'] = strtolower(preg_replace('/[^a-z]/i', '_', $val['index']));
+      $val['index'] = strtolower(
+        preg_replace(
+          '/[^a-z]/i',
+          '_',
+          array_ifelse('index', $val, $key)
+        )
+      );
 
-      // Make sure val is present
-      if (!array_key_exists('val', $val)) {
-        $val['val'] = 0;
-      }
-
-      // Make sure label is present and has some value
-      if (!array_key_exists('label', $val)) {
-        $val['label'] = $val['index'];
-      }
-
-      // Make sure short is present
-      if (!array_key_exists('short', $val)) {
-        $val['short'] = '';
-      }
-
-      // Make sure description is present
-      if (!array_key_exists('description', $val)) {
-        $val['description'] = '';
-      }
-
-      // Make sure required is present
-      if (!array_key_exists('required', $val)) {
-        $val['required'] = FALSE;
-      }
-
-      // Make sure default is present
-      if (!array_key_exists('default', $val)) {
-        $val['default'] = NULL;
-      }
+      // Scrub the remaining elements
+      $val['val'] = (int) array_ifelse('val', $val);
+      $val['label'] = array_ifelse('label', $val, $val['index']);
+      $val['short'] = (string) array_ifelse('short', $val);
+      $val['description'] = (string) array_ifelse('description', $val);
+      $val['required'] = (boolean) array_ifelse('required', $val);
+      $val['default'] = array_ifelse('default', $val);
 
       // Add the polished version to the return
       $this->_runtime_command_options[$key] = $val;
@@ -305,9 +290,16 @@ class ConfigBase {
     // Test for required values.
     $has_error = array();
     foreach ($this->_runtime_command_options as $key=>$one_option) {
-      if ($one_option['required'] && !array_ifelse($key, $this->options, FALSE)) {
-        echo "ERROR: Missing config parameter $key!\n";
-        $has_error[] = $key;
+      $current_option = array_ifelse($one_option['index'], $this->options, FALSE);
+      if (!$current_option) {
+        if ($one_option['required']) {
+          echo "ERROR: Missing config parameter $key!\n";
+          $has_error[] = $key;
+        }
+        elseif ($one_option['val'] == 1) {
+          echo "ERROR: Config parameter $key missing required value!\n";
+          $has_error[] = $key;
+        }
       }
     }
 
