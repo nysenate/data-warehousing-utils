@@ -100,7 +100,8 @@ class ConfigBase {
       $this->_available_command_options,
       static::$_standard_command_options
     );
-    
+    array_walk($this->_runtime_command_options, function(&$v,$k){$v['passed'] = false;});
+
     // Make sure the runtime options are in a usable state, and retrieve defaults
     $defaults = array_map(function($v){return $v['default'];}, $this->polishOptions());
 
@@ -220,6 +221,9 @@ class ConfigBase {
         if ($current_option['val'] == 0 || ($current_option['val'] == 2 && !$ret[$found_index])) {
           $ret[$found_index] = TRUE;
         }
+
+        // Record that this option was passed in
+        $this->_runtime_command_options[$long_key]['passed'] = true;
       }
     }
 
@@ -290,13 +294,13 @@ class ConfigBase {
     // Test for required values.
     $has_error = array();
     foreach ($this->_runtime_command_options as $key=>$one_option) {
-      $current_option = array_ifelse($one_option['index'], $this->options, FALSE);
-      if (!$current_option) {
+      $current_option = array_ifelse($one_option['index'], $this->options, NULL);
+      if (is_null($current_option)) {
         if ($one_option['required']) {
           echo "ERROR: Missing config parameter $key!\n";
           $has_error[] = $key;
         }
-        elseif ($one_option['val'] == 1) {
+        elseif ($one_option['val'] == 1 && $one_option['passed']) {
           echo "ERROR: Config parameter $key missing required value!\n";
           $has_error[] = $key;
         }
