@@ -120,7 +120,7 @@ class API_Object {
     // Repeat this loop until the cursor comes back empty.
     do {
       // Generate options for this API call.
-      $req_opts = array('forum'=>$this->config->disqus_forum, 'order'=>'asc', 'limit'=>100);
+      $req_opts = array('forum'=>$this->config->forum, 'order'=>'asc', 'limit'=>100);
       if ($cursor->next) {
         $req_opts['cursor']=$cursor->next;
       }
