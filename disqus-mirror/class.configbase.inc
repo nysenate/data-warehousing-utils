@@ -148,6 +148,10 @@ class ConfigBase {
     return $ret;
   }
 
+  public function getOptions() {
+    return $this->options;
+  }
+
   public function getUsage() {
     $msg = array();
     foreach ($this->_runtime_command_options as $key=>$val) {
