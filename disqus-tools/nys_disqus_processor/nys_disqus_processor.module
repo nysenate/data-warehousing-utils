@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * @file
+ * File nyc_statute_import.module.
+ */
+
+require_once 'nys_disqus_processor.load_token.php';
+require_once 'nys_disqus_processor.get_token.php';
+require_once 'nys_disqus_processor.get_thread.php';
+require_once 'nys_disqus_processor.get_posts.php';
+require_once 'nys_disqus_processor.get_post.php';
+require_once 'nys_disqus_processor.update_thread_id.php';
+require_once 'nys_disqus_processor.update_thread_link.php';
+require_once 'nys_disqus_processor.survey_threads.php';
+require_once 'nys_disqus_processor.remove_thread.php';
+
+
+define("NYS_SURVEY_DEFAULT_TABLE_NAME", "zzz");
+
+/**
+ * An implementation of hook_menu().
+ */
+function nys_disqus_processor_menu() {
+
+  $items = array();
+
+ $items['disqus-oauth-callback'] = array(
+    'title' => 'Oauth callback Page',
+    'description' => 'Required for oauth calls.',
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'page callback' => 'nys_disqus_processor_callback',
+    'type' => MENU_CALLBACK,
+    'file' => 'nys_disqus_processor_callback.inc',
+  );
+
+  return $items;
+}

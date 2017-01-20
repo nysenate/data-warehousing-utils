@@ -1,0 +1,10 @@
+name = DISQUS Processor
+description = A set of Disqus drush commands.
+core = 7.x
+
+package = NY STATE SENATE
+
+;dependencies[] = nys_legislation_explorer
+
+;dependencies[] = entity
+;dependencies[] = views

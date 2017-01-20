@@ -1,0 +1,346 @@
+<?php
+
+/**
+ * @file
+ * File nyc_statute_import.module.
+ */
+
+include 'scrape_page.inc';
+
+/** Processes rewritetable and extracts the body tag from the pages in the `new` column.
+ *  Stores the results in the nys_disqus_scrape_data_raw table.
+ */
+
+function nys_scraper_scrape_body_tags($arg1) {
+
+  drupal_set_time_limit(8000000);
+
+  $uid = 1;
+  $result = db_query('SELECT * FROM `rewrite` WHERE `id` NOT IN (SELECT `id` FROM `nys_disqus_scrape_data_raw`)');
+  // Result is returned as a iterable object that returns a stdClass object on each iteration
+  foreach ($result as $record) {
+
+      //print_r($record->id);
+      //print_r($record->original);
+      //print_r($record->new);
+
+      $id = $record->id;
+      $original = $record->original;
+      $new = get_container_text($record->new, 'body', 'class');
+
+      print "$id  | $new  \r\n";
+
+      insert_scrape_data_raw($id, $original, $new);
+
+  }
+
+}
+
+//--------------------------------------------------
+function insert_scrape_data_raw($id, $original, $new) {
+  $sql =  "INSERT INTO `nysenate`.`nys_disqus_scrape_data_raw` (`id`, `original`, `new`) VALUES ($id, '$original', '$new')";
+  db_query( $sql);
+}
+
+
+//========================================================================================
+
+
+function nys_scraper_scrape_body_tags_1($arg1) {
+
+  drupal_set_time_limit(8000000);
+
+  $uid = 1;
+  //$result = db_query('SELECT * FROM `nys_disqus_scrape_data_raw` WHERE `id` NOT IN (SELECT `id` FROM `nys_disqus_scrape_data_raw`)');
+  $result = db_query('SELECT * FROM `nys_disqus_scrape_data_raw` WHERE 1');
+  // Result is returned as a iterable object that returns a stdClass object on each iteration
+  foreach ($result as $record) {
+
+      //print_r($record->id);
+      //print_r($record->original);
+      //print_r($record->new);
+
+      $id = $record->id;
+      $original = $record->original;
+      //$new = get_container_text($record->new, 'body', 'class');
+
+      $tag = extract_nid_from_body_tag($record->new);
+      if (strcmp($tag, 'panels-page') == 0) {
+        $new = $tag;
+      }
+      else {
+        $new = 'node/' . $tag;
+      }
+
+      print "$id  | $new  \r\n";
+
+      insert_scrape_data($id, $original, $new);
+
+      if ($new == 'panels-page')
+          $uid++;
+
+  }
+
+  print "\r\n NUM panels-page $uid \r\n";
+
+}
+
+function insert_scrape_data($id, $original, $new) {
+  $sql =  "INSERT INTO `nys_disqus_scrape_data` (`id`, `original`, `new`) VALUES ($id, '$original', '$new')";
+  db_query( $sql);
+}
+
+function extract_nid_from_body_tag($body_class_tag) {
+	$body_class_tag_array = explode(' ', $body_class_tag);
+	if (is_array($body_class_tag_array) && count($body_class_tag_array) > 0) {
+		foreach($body_class_tag_array as $tag) {
+			$tag_length = strlen($tag);
+			if ((strncmp($tag ,'page-node-' , strlen('page-node-') )  == 0 ) && (strlen($tag) > strlen('page-node-')) ) {
+            	// This must be the node tag
+            	$return_value = substr($tag, strlen('page-node-'));
+            	return $return_value;
+            }
+            if (strcmp($tag, 'panels-page') == 0) {
+            	return 'panels-page';
+            }
+
+		}
+    }
+
+    return FALSE;
+}
+
+
+//========================================================================================
+
+/** Processes nys_disqus_scrape_data_raw table and extracts the body tag from the pages in the `new` column.
+ *  Stores the results in the nys_disqus_scrape_data table.
+ */
+
+function nys_scraper_scrape_body_tags_2($arg1) {
+
+  drupal_set_time_limit(8000000);
+
+  $uid = 1;
+  //$result = db_query('SELECT * FROM `nys_disqus_scrape_data_raw` WHERE `id` NOT IN (SELECT `id` FROM `nys_disqus_scrape_data_raw`)');
+  $result = db_query('SELECT * FROM `nys_disqus_scrape_data` WHERE 1');
+  // Result is returned as a iterable object that returns a stdClass object on each iteration
+  foreach ($result as $record) {
+
+      //print_r($record->id);
+      //print_r($record->original);
+      //print_r($record->new);
+
+      $id = $record->id;
+      $original = $record->original;
+      //$new = get_container_text($record->new, 'body', 'class');
+
+      // get the value for new
+      // We are gonna get it from the API
+
+      $json = nys_disqus_processor_disqus_get_thread_json($record->new, 'ident');
+      $thread_data = json_decode($json);
+
+      if ($thread_data != NULL && $thread_data != FALSE) {
+
+        if ($thread_data->code == 2) {
+          $new = '';
+        }
+
+        if ($thread_data->code == 0) {
+          $new = $thread_data->response->link;
+        }
+
+      }
+
+
+      print "$id  | $new  \r\n";
+
+
+
+      insert_scrape_data_output($id, $original, $new);
+
+
+
+      sleep(4);
+
+  }
+
+
+}
+
+function insert_scrape_data_output($id, $original, $new) {
+  $sql =  "INSERT INTO `nysenate`.`nys_disqus_scrape_data_output` (`id`, `original`, `new`) VALUES ($id, '$original', '$new')";
+  db_query( $sql);
+}
+
+//$link, 'link');
+function _disqus_get_thread_json($arg1, $arg2) {
+
+  if (empty($arg1) == TRUE) {
+    print "\r\nNo Thread Id or Identifier was supplied.\r\n";
+    return;
+  }
+
+  ini_set('display_errors', 'on');
+
+  $forum = "nysenateopenleg";
+  $key = variable_get('disqus_publickey');
+  //$key = 'XXB6rPiG3UhR2ovCyan5AuA1N8lVmkReCKKlYSNdBlAvezXZFlwb3e681HZEnbU1';
+  $key = 'XXB6rPiG3UhR2ovCyan5AuA1N8lVmkReCKKlYSNdBlAvezXZFlwb3e681HZEnbU1';
+
+  if (is_numeric($arg1) == TRUE) {
+  	// Arg is a thread ID.
+  	$thread = $arg1;
+  	$endpoint = 'http://disqus.com/api/3.0/threads/details.json?api_key='.urlencode($key).'&forum='.$forum.'&thread='.urlencode($thread);
+  }
+  else {
+    // Arg is a url.
+    $thread = $arg1;
+    if (empty($arg2) == TRUE || strcmp($arg2, 'ident') == 0 ) {
+      $endpoint = 'http://disqus.com/api/3.0/threads/details.json?api_key='.urlencode($key).'&forum='.$forum.'&thread:ident='.$thread;
+    }
+    elseif (empty($arg2) == FALSE && strcmp($arg2, 'link') == 0 ) {
+      $endpoint = 'http://disqus.com/api/3.0/threads/details.json?api_key='.urlencode($key).'&forum='.$forum.'&thread:link='.$thread;
+    }
+  }
+
+  // Setup curl to make a call to the endpoint.
+  $session = curl_init($endpoint);
+
+  // Indicates that we want the response back rather than just returning a "TRUE" string.
+  curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+
+  // Execute GET and get the session back.
+  $result = curl_exec($session);
+
+  // Close connection.
+  curl_close($session);
+
+  // Display the response/
+  return $result;
+
+}
+
+/**
+ *  URL Encode in necesary for some links
+ */
+function __encode_if_necessary($url) {
+
+    if (strpos($url, '?') !== FALSE || strpos($url, '&') !== FALSE || strpos($url, '%') !== FALSE    ) {
+      return urlencode($url);
+    }
+    else {
+    	return $url;
+    }
+
+}
+
+
+
+//========================================================================================
+
+/** Surveys nys_disqus_scrape_data_raw table and extracts the id and number of posts.
+ *  Stores the results in the `nys_disqus_survey_before_merge` table.
+ */
+
+function nys_scraper_scrape_body_tags_3($arg1) {
+
+  drupal_set_time_limit(8000000);
+
+  $uid = 1;
+  //$result = db_query('SELECT * FROM `nys_disqus_scrape_data_raw` WHERE `id` NOT IN (SELECT `id` FROM `nys_disqus_scrape_data_raw`)');
+  $result = db_query('SELECT * FROM `nys_disqus_scrape_data` WHERE 1');
+  // Result is returned as a iterable object that returns a stdClass object on each iteration
+  foreach ($result as $record) {
+
+      //print_r($record->id);
+      //print_r($record->original);
+      //print_r($record->new);
+
+      $id = $record->id;
+      //$original = $record->original;
+      //$new = get_container_text($record->new, 'body', 'class');
+
+      // get the value for new
+      // We are gonna get it from the API
+
+      $json = nys_disqus_processor_disqus_get_thread_json($record->new, 'ident');
+      $thread_data = json_decode($json);
+
+      if ($thread_data != NULL && $thread_data != FALSE) {
+
+
+        if ($thread_data->code == 2) {
+          $new = '';
+        }
+
+        if ($thread_data->code == 0) {
+          $diqus_id = $thread_data->response->id;
+          $num_posts = (integer) $thread_data->response->posts;
+        }
+
+      }
+
+      //print  "  insert_survey_before_merge($id, $diqus_id, $num_posts) \r\n";
+
+      print "$id | $diqus_id | $num_posts | \r\n";
+
+
+
+      //insert_survey_before_merge($id, $diqus_id, $num_posts);
+      insert_survey_after_merge($id, $diqus_id, $num_posts);
+
+
+
+
+      sleep(4);
+
+  }
+
+
+}
+
+function insert_survey_before_merge($id, $diqus_id, $num_posts) {
+  $sql =  "INSERT INTO `nys_disqus_survey_before_merge` (`id`, `identifier`, `num_posts`) VALUES ($id, $diqus_id, $num_posts)";
+  db_query( $sql);
+}
+
+
+function insert_survey_after_merge($id, $diqus_id, $num_posts) {
+  $sql =  "INSERT INTO `nys_disqus_survey_after_merge` (`id`, `identifier`, `num_posts`) VALUES ($id, $diqus_id, $num_posts)";
+  db_query( $sql);
+}
+
+
+
+//========================================================================================
+
+/*
+
+
+//$url = 'https://www.nysenate.gov/legislation/bills/2009/s4277';
+
+//$data = get_container_text($url, 'body', 'class');
+
+
+
+//insert_scrape_data(45, '$original', $data);
+
+INSERT INTO `nysenate`.`nys_disqus_scrape_data_raw` (`id`, `original`, `new`) VALUES ('3344', 'original', 'new');
+
+REATE TABLE `move_candidates` LIKE `rewrite`;
+CREATE TABLE `nys_disqus_scrape_data_raw` LIKE `rewrite`;
+SELECT `id`, `new`, `original` FROM `rewrite` WHERE 1;
+12345678901234567892123456789312345678941234567895123456789612345678991234567890123456789112345678921234567894
+html not-front not-logged-in no-sidebars page-node page-node- page-node-4926471 node-type-bill section-legislation
+
+
+
+
+https://www.nysenate.gov/legislation/bills/2009/S3890
+
+
+ALTER TABLE `nys_disqus_scrape_data_raw` CHANGE `new` `new` VARCHAR(512) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL DEFAULT '';
+
+*/
