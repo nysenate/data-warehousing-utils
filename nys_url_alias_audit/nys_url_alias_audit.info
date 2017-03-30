@@ -1,0 +1,6 @@
+name = URL Alias Audit
+description = Audits url aliases.
+core = 7.x
+
+package = NY STATE SENATE
+

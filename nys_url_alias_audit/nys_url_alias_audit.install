@@ -1,0 +1,150 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the location module.
+ */
+
+/**
+ * An implementation of hook_uninstall().
+ */
+function nys_url_alias_audit_uninstall() {
+  // Delete variables.
+  //variable_del('????');
+  //variable_del('?????');
+}
+
+/**
+ * An implementation of hook_schema().
+ */
+function nys_url_alias_audit_schema() {
+  $schema = array();
+
+  $schema['nys_url_alias_audit'] = array(
+    'description' => 'School data managed by nys_school_importer.module.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Primary Key: Unique Node nid.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'session' => array(
+        'description' => 'Session - Year.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => TRUE,
+      ),
+      'base_print_no' => array(
+        'description' => 'Base Print Number.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => FALSE,
+      ),
+      'print_no' => array(
+        'description' => 'Full Print Number.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => FALSE,
+      ),
+      'active_version' => array(
+        'description' => 'Active Version.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => FALSE,
+      ),
+
+      'url_alias' => array(
+        'description' => 'URL Alias.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => FALSE,
+      ),
+      'url_alias_amendment' => array(
+        'description' => 'Active Amendment.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => FALSE,
+      ),
+      'matched_alias' => array(
+        'description' => 'Matched Alias.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'matched_alias_amendment' => array(
+        'description' => 'Matched Alias Amendment.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'matched_alias_print_no' => array(
+        'description' => 'Matched Short Alias with print_no.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+     'url_alias_quantity' => array(
+        'description' => 'Number of URL Aliases.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  $schema['nys_url_alias_audit_matched'] = array(
+    'description' => 'Audit Results.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Node Nid.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'matched_alias' => array(
+        'description' => 'Matched Alias.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'matched_alias_amendment' => array(
+        'description' => 'Matched Alias Amendment.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+       ),
+      'matched_alias_print_no' => array(
+        'description' => 'Matched Short Alias with print_no.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+     'url_alias_quantity' => array(
+        'description' => 'Number of URL Aliases.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+
+  return $schema;
+}
