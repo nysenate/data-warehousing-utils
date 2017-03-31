@@ -10,8 +10,7 @@
  */
 function nys_url_alias_audit_uninstall() {
   // Delete variables.
-  //variable_del('????');
-  //variable_del('?????');
+  variable_del('nys_url_alias_removed_short_amendments');
 }
 
 /**
@@ -59,14 +58,21 @@ function nys_url_alias_audit_schema() {
       ),
 
       'url_alias' => array(
-        'description' => 'URL Alias.',
+        'description' => 'Base URL Alias. Does not include amendment letter',
         'type' => 'varchar',
         'length' => 255,
         'default' => '',
         'not null' => FALSE,
       ),
       'url_alias_amendment' => array(
-        'description' => 'Active Amendment.',
+        'description' => 'Active Amendment Alias. amendment/original etc.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'not null' => FALSE,
+      ),
+      'url_alias_print_no' => array(
+        'description' => 'print_no Alias. Some includes amendment letter.',
         'type' => 'varchar',
         'length' => 255,
         'default' => '',
@@ -93,7 +99,7 @@ function nys_url_alias_audit_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-     'url_alias_quantity' => array(
+      'url_alias_quantity' => array(
         'description' => 'Number of URL Aliases.',
         'type' => 'int',
         'unsigned' => TRUE,
@@ -126,7 +132,7 @@ function nys_url_alias_audit_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 1,
-       ),
+      ),
       'matched_alias_print_no' => array(
         'description' => 'Matched Short Alias with print_no.',
         'type' => 'int',
@@ -134,7 +140,7 @@ function nys_url_alias_audit_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-     'url_alias_quantity' => array(
+      'url_alias_quantity' => array(
         'description' => 'Number of URL Aliases.',
         'type' => 'int',
         'unsigned' => TRUE,
@@ -144,7 +150,6 @@ function nys_url_alias_audit_schema() {
     ),
     'primary key' => array('nid'),
   );
-
 
   return $schema;
 }

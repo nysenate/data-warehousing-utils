@@ -70,7 +70,6 @@ function nys_url_alias_audit_drush_command() {
     'aliases' => array('asa'),
   );
 
-
   $items['remove-alias-short-amendments'] = array(
     'description' => dt('Removeshort URL aliases for ammendments.'),
     'arguments'   => array(
@@ -155,6 +154,34 @@ function nys_url_alias_audit_drush_command() {
     'aliases' => array('aua'),
   );
 
+  $items['lookup-url-alias'] = array(
+    'description' => dt('Show all the URL Aliases.'),
+    'arguments'   => array(
+      'arg1'    => dt('An optional argument'),
+    ),
+    'examples' => array(
+      'Standard example' => 'drush lookup-url-alias',
+      'Argument example' => 'drush lookup-url-alias 2017/A2596',
+    ),
+    'aliases' => array('lua'),
+  );
+
+  $items['url-alias-report'] = array(
+    'description' => dt('General Audit of URL Aliases for Bills, Resolutions and Laws.'),
+    'arguments'   => array(
+      'arg1'    => dt('An optional argument'),
+    ),
+    'options' => array(
+      'csv' => 'Return the Results in a csv format.',
+      'sql' => 'Return the SQL not the data.',
+    ),
+    'examples' => array(
+      'Standard example' => 'drush url-alias-report',
+      'Argument example' => 'drush url-alias-report',
+    ),
+    'aliases' => array('uar'),
+  );
+
   return $items;
 }
 
@@ -192,7 +219,6 @@ function drush_nys_url_alias_audit_survey_bill_alias($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_alias_duplicates($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to Clear The Survey Table and run a url alias survey ?', $indent = 0);
   $retval = nys_url_alias_audit_alias_duplicates($arg1);
   drush_log($retval, 'ok');
 
@@ -232,7 +258,6 @@ function drush_nys_url_alias_audit_remove_duplicates($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_alias_short_amendments($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to Clear The Survey Table and run a url alias survey ?', $indent = 0);
   $retval = nys_url_alias_audit_alias_short_amendments($arg1);
   drush_log($retval, 'ok');
 
@@ -252,7 +277,6 @@ function drush_nys_url_alias_audit_alias_short_amendments($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_remove_alias_short_amendments($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to Clear The Survey Table and run a url alias survey ?', $indent = 0);
   $retval = nys_url_alias_audit_remove_alias_short_amendments($arg1);
   drush_log($retval, 'ok');
 
@@ -272,7 +296,6 @@ function drush_nys_url_alias_audit_remove_alias_short_amendments($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_alias_not_original($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to DElETE ALL THE SCHOOL NODES - clear-all-schools ?', $indent = 0);
   $retval = nys_url_alias_alias_not_original($arg1);
   drush_log($retval, 'ok');
 
@@ -312,7 +335,6 @@ function drush_nys_url_alias_audit_remove_not_original($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_alias_empty($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to Clear The Survey Table and run a url alias survey ?', $indent = 0);
   $retval = nys_url_alias_audit_alias_empty($arg1);
   drush_log($retval, 'ok');
 
@@ -352,7 +374,6 @@ function drush_nys_url_alias_audit_survey_laws($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_survey_laws_report($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to remove the duplicate url aliases and compact / rebuild the url_alias table- remove-duplicates ?', $indent = 0);
   $retval = nys_url_alias_audit_survey_laws_report($arg1);
   drush_log($retval, 'ok');
 
@@ -372,8 +393,46 @@ function drush_nys_url_alias_audit_survey_laws_report($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_audit_url_alias($arg1 = NULL) {
-  //drush_confirm('Are you sure you want to remove the duplicate url aliases and compact / rebuild the url_alias table- remove-duplicates ?', $indent = 0);
   $retval = nys_url_alias_audit_audit_ur_alias($arg1);
+  drush_log($retval, 'ok');
+
+  // Log to the command line with an OK status.
+  drush_log('Completed Audit URL Aliases Report.', 'ok');
+}
+
+
+/**
+ * Callback function for drush lookup-url-alias - lua.
+ *
+ * Callback is called by using drush_hook_command() where
+ * hook is the name of the module (MYMODULE) and command is the name of
+ * the Drush command with all "-" characters
+ * converted to "_" characters (my_command).
+ *
+ * $arg1
+ *   An optional argument
+ */
+function drush_nys_url_alias_audit_lookup_url_alias($arg1 = NULL) {
+  $retval = nys_url_alias_audit_lookup_url_alias($arg1);
+  drush_log($retval, 'ok');
+
+  // Log to the command line with an OK status.
+  drush_log('Completed Audit URL Aliases Report.', 'ok');
+}
+
+/**
+ * Callback function for drush url-alias-report - uar.
+ *
+ * Callback is called by using drush_hook_command() where
+ * hook is the name of the module (MYMODULE) and command is the name of
+ * the Drush command with all "-" characters
+ * converted to "_" characters (my_command).
+ *
+ * $arg1
+ *   An optional argument
+ */
+function drush_nys_url_alias_audit_url_alias_report($arg1 = NULL) {
+  $retval = nys_url_alias_url_alias_report($arg1);
   drush_log($retval, 'ok');
 
   // Log to the command line with an OK status.

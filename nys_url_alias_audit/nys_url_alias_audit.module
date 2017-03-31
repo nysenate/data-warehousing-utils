@@ -5,20 +5,19 @@
  * File nyc_school_delete.module.
  */
 
-
 /**
- * drush survey-bill-alias - sba
+ * Drush survey-bill-alias - sba.
+ *
  * Surveys the Bill aliases and stores them in table.
-Add In clause.
  */
 function nys_url_alias_audit_survey_bill_alias($arg1) {
 
-  //The fields are really bill specific.
-if (empty($arg1) == TRUE) { //db
-  // Truncates the table in preparation for loading
-   db_truncate('nys_url_alias_audit')->execute();
+  // The fields are really bill specific.
+  if (empty($arg1) == TRUE) {
+    // Truncates the table in preparation for loading.
+    db_truncate('nys_url_alias_audit')->execute();
 
-  $sql = "
+    $sql = "
 INSERT `nys_url_alias_audit`
 SELECT
 `nid`,
@@ -26,6 +25,7 @@ SELECT
 `field_ol_base_print_no_value`,
 `field_ol_print_no_value`,
 `field_ol_active_version_value`,
+'',
 '',
 '',
 0,
@@ -47,23 +47,14 @@ WHERE
 ORDER BY `node`.`nid`
          ";
 
-  db_query($sql);
+    db_query($sql);
 
+  }
 
-}  //db
-
-  // Now for the url alias survey
+  // Now for the url alias survey.
   $result = db_query('SELECT * FROM `nys_url_alias_audit`');
-//  $result = db_query('SELECT * FROM `nys_url_alias_audit` WHERE LENGTH(`active_version`) > 0 LIMIT 10');
-  foreach ($result as $record) {
 
-/*
-    print_r($record->nid); print "\r\n\r\n";
-    print_r($record->session); print "\r\n\r\n";
-    print_r($record->base_print_no); print "\r\n\r\n";
-    print_r($record->print_no); print "\r\n\r\n";
-    print_r($record->active_version); print "\r\n\r\n";
-*/
+  foreach ($result as $record) {
 
     if (empty($record->active_version)) {
       $active_version = 'original';
@@ -77,43 +68,43 @@ ORDER BY `node`.`nid`
     $url_alias           = "legislation/bills/$record->session/$record->print_no";
     $url_alias_amendment = "legislation/bills/$record->session/$record->base_print_no/amendment/$active_version";
 
-    // Three things
-    // Quantity of url aliases for node
+    // Three things.
+    // Quantity of url aliases for node.
     $source = 'node/' . $record->nid;
     $quantity_of_url_alias_for_node = db_query('SELECT COUNT(*) FROM `url_alias` WHERE `source` = :source', array(':source' => $source))->fetchField();
 
-    // Quantity of url alias
+    // Quantity of url alias.
     $quantity_of_base_url_alias = db_query('SELECT COUNT(*) FROM `url_alias` WHERE `alias` = :alias', array(':alias' => $url_base_alias))->fetchField();
 
-    // Quantity of short url alias with print_no at the end. NOT base_print_no
+    // Quantity of short url alias with print_no at the end. NOT base_print_no.
     $quantity_of_url_alias = db_query('SELECT COUNT(*) FROM `url_alias` WHERE `alias` = :alias', array(':alias' => $url_alias))->fetchField();
 
-    // Quantity of url amendment alias
+    // Quantity of url amendment alias.
     $quantity_of_url_alias_amendment = db_query('SELECT COUNT(*) FROM `url_alias` WHERE `alias` = :alias', array(':alias' => $url_alias_amendment))->fetchField();
 
-    // put them in there
+    // Put them in there.
     $sql = "UPDATE `nys_url_alias_audit` SET
       `url_alias` = :lias,
       `url_alias_amendment` = :liasm,
+      `url_alias_print_no` = :liaspn,
       `matched_alias` = :mlias,
       `matched_alias_amendment` = :mliasm,
       `matched_alias_print_no` = :mliasp,
       `url_alias_quantity` = :liasq
       WHERE `nid` = :nid;";
 
-    db_query($sql, array(':nid' => $record->nid,
-                     ':lias' => $url_alias,
-                     ':liasm' => $url_alias_amendment,
-                     ':mlias' => $quantity_of_url_alias,
-                     ':mliasm' => $quantity_of_url_alias_amendment,
-                     ':mliasp' => $quantity_of_base_url_alias,
-                     ':liasq' => $quantity_of_url_alias_for_node,
-                     ));
-
+    db_query($sql, array(
+      ':nid' => $record->nid,
+      ':lias' => $url_alias,
+      ':liasm' => $url_alias_amendment,
+      'liaspn' => $url_base_alias,
+      ':mlias' => $quantity_of_url_alias,
+      ':mliasm' => $quantity_of_url_alias_amendment,
+      ':mliasp' => $quantity_of_base_url_alias,
+      ':liasq' => $quantity_of_url_alias_for_node,
+    ));
 
     print "| $source \t| $url_alias | $quantity_of_url_alias \t| $quantity_of_url_alias_for_node \t| $quantity_of_base_url_alias \t| $quantity_of_url_alias_amendment \t| \r\n";
-
-
 
   }
 
@@ -122,7 +113,8 @@ ORDER BY `node`.`nid`
 }
 
 /**
- * drush alias-duplicates - adu
+ * Drush alias-duplicates - adu.
+ *
  * Reports on Duplicate Url Aliases.
  */
 function nys_url_alias_audit_alias_duplicates($arg1) {
@@ -145,36 +137,33 @@ function nys_url_alias_audit_alias_duplicates($arg1) {
 
   print "\r\n\r\nUSE THE drush remove-duplicates command to clear and rebuild the url_alias table. \r\n";
 
-
 }
 
 /**
- * drush remove-duplicates - rdu .
+ * Drush remove-duplicates - rdu.
+ *
  * Removes the Duplicate Url Aliases and rebuild the url_alias table.
  */
 function nys_url_alias_audit_remove_duplicates($arg1) {
 
-  //url_alias duplicate and orphan reduction  */
+  // A url_alias duplicate and orphan reduction.
   // Put the site offline.
   variable_set('site_offline', '1');
 
   print "\r\n\r\nSite Off Line\r\n\r\n";
 
   // Get size of `url_alias` table.
-//print db_query("SELECT 'The size of `url_alias` table', COUNT(*) FROM `url_alias`")->fetchField();
   $size = db_query("SELECT COUNT(*) FROM `url_alias`")->fetchField();
   print "The size of `url_alias` table' = $size \r\n\r\n";
 
   // Clone the `url_alias` table.
   db_query("CREATE TABLE `url_alias_copy` LIKE `url_alias`");
 
-
   // Copy the distinct rows - beauteous.
   db_query("INSERT INTO url_alias_copy(`source`, `alias`, `language`)
             SELECT DISTINCT source, alias, language FROM `url_alias`");
 
   // Get the number of rows copied.
-//print db_query("SELECT 'The number of rows copied.', COUNT(*) FROM `url_alias_copy`")->fetchField();
   $size = db_query("SELECT COUNT(*) FROM `url_alias_copy`")->fetchField();
   print "The number of rows copied. = $size\r\n\r\n";
 
@@ -186,7 +175,6 @@ function nys_url_alias_audit_remove_duplicates($arg1) {
             SELECT * FROM `url_alias_copy`");
 
   // Get the number of rows copied into the `url_alias` table.
-//print db_query("SELECT 'The number of rows copied into the `url_alias` table. ', COUNT(*) FROM `url_alias`")->fetchField();
   $size = db_query("SELECT COUNT(*) FROM `url_alias`")->fetchField();
   print "The number of rows copied into the `url_alias` table. = $size \r\n\r\n";
 
@@ -194,8 +182,6 @@ function nys_url_alias_audit_remove_duplicates($arg1) {
   db_query("DROP TABLE `url_alias_copy`");
 
   // Get FINAL size of `url_alias` table.
-//print db_query("SELECT 'FINAL size of `url_alias` table.', COUNT(*) FROM `url_alias`")->fetchField();
-
   print "FINAL size of `url_alias` table. = $size \r\n\r\n";
 
   // Put the site back online.
@@ -206,8 +192,9 @@ function nys_url_alias_audit_remove_duplicates($arg1) {
 }
 
 /**
- * drush alias-short-amendments - asa .
- * Finds short ammendment aliases like legislation/bills/2015/A6031A
+ * Drush alias-short-amendments - asa.
+ *
+ * Finds short ammendment aliases like legislation/bills/2015/A6031A.
  */
 function nys_url_alias_audit_alias_short_amendments($arg1) {
 
@@ -219,8 +206,8 @@ function nys_url_alias_audit_alias_short_amendments($arg1) {
 
   $previously_removed = variable_get('nys_url_alias_removed_short_amendments', FALSE);
   if ($previously_removed == TRUE) {
-      print "\r\n\r\nThese have been removed by a previous run. You need to run drush survey-bill-alias again to get fresh data.\r\n";
-      return;
+    print "\r\n\r\nThese have been removed by a previous run. You need to run drush survey-bill-alias again to get fresh data.\r\n";
+    return;
   }
 
   $quantity_of_short_amendlent_aliases = db_query("SELECT COUNT(*) FROM `nys_url_alias_audit` WHERE RIGHT(`print_no`,1) IN ('A','B','C','D','E','F','G','a','b','c','d','e','f','g') AND matched_alias = 1")->fetchField();
@@ -250,7 +237,7 @@ function nys_url_alias_audit_alias_short_amendments($arg1) {
 }
 
 /**
- * drush remove-alias-short-amendments - rasa.
+ * Drush remove-alias-short-amendments - rasa.
  */
 function nys_url_alias_audit_remove_alias_short_amendments($arg1) {
 
@@ -291,7 +278,7 @@ function nys_url_alias_audit_remove_alias_short_amendments($arg1) {
 }
 
 /**
- * drush alias-not-original - ano.
+ * Drush alias-not-original - ano.
  */
 function nys_url_alias_alias_not_original($arg1) {
   $count = 0;
@@ -307,29 +294,28 @@ function nys_url_alias_alias_not_original($arg1) {
   $result = db_query("SELECT `session`, `base_print_no` FROM `nys_url_alias_audit` WHERE RIGHT(`print_no`,1) IN (1,2,3,4,5,6,7,8,9,0)");
   foreach ($result as $record) {
 
-      $alias = "legislation/bills/$record->session/$record->base_print_no";
-      $result = db_query("SELECT * FROM `url_alias` WHERE `alias` = :alias ORDER BY `pid` ASC", array(':alias' => $alias));
+    $alias = "legislation/bills/$record->session/$record->base_print_no";
+    $result = db_query("SELECT * FROM `url_alias` WHERE `alias` = :alias ORDER BY `pid` ASC", array(':alias' => $alias));
 
-      foreach ($result as $record) {
-        $row_count = $result->rowCount();
-        if ($row_count == 2) {
+    foreach ($result as $record) {
+      $row_count = $result->rowCount();
+      if ($row_count == 2) {
 
-          print_r($record->pid);
-          print "\t| ";
-          print_r($record->source);
-          print "\t| ";
-          print_r($record->alias);
-          print "\t| ";
-          print_r($record->language);
-          print "\t|\r\n";
+        print_r($record->pid);
+        print "\t| ";
+        print_r($record->source);
+        print "\t| ";
+        print_r($record->alias);
+        print "\t| ";
+        print_r($record->language);
+        print "\t|\r\n";
 
-          $count++;
+        $count++;
 
-          break;
+        break;
 
-        }
       }
-
+    }
   }
 
   print "\r\n\r\nNumber of Original Aliases Still There. $count\r\n";
@@ -337,7 +323,7 @@ function nys_url_alias_alias_not_original($arg1) {
 }
 
 /**
- * drush remove-not-original - rno.
+ * Drush remove-not-original - rno.
  */
 function nys_url_alias_audit_remove_not_original($arg1) {
   $count = 0;
@@ -353,20 +339,20 @@ function nys_url_alias_audit_remove_not_original($arg1) {
   $result = db_query("SELECT `session`, `base_print_no` FROM `nys_url_alias_audit` WHERE RIGHT(`print_no`,1) IN (1,2,3,4,5,6,7,8,9,0)");
   foreach ($result as $record) {
 
-      $alias = "legislation/bills/$record->session/$record->base_print_no";
-      $result = db_query("SELECT * FROM `url_alias` WHERE `alias` = :alias ORDER BY `pid` ASC", array(':alias' => $alias));
+    $alias = "legislation/bills/$record->session/$record->base_print_no";
+    $result = db_query("SELECT * FROM `url_alias` WHERE `alias` = :alias ORDER BY `pid` ASC", array(':alias' => $alias));
 
-      foreach ($result as $record) {
-        $row_count = $result->rowCount();
-        if ($row_count == 2) {
-          // Remove the Alias.
-          nys_url_alias_audit_delete_url_alias($record->pid, $record->source, $record->alias, $record->language);
+    foreach ($result as $record) {
+      $row_count = $result->rowCount();
+      if ($row_count == 2) {
+        // Remove the Alias.
+        nys_url_alias_audit_delete_url_alias($record->pid, $record->source, $record->alias, $record->language);
 
-          $count++;
+        $count++;
 
-          break;
-        }
+        break;
       }
+    }
   }
 
   print "\r\n\r\nNumber of Original Aliases Deleted. $count\r\n";
@@ -374,7 +360,8 @@ function nys_url_alias_audit_remove_not_original($arg1) {
 }
 
 /**
- * drush alias-empty - amt .
+ * Drush alias-empty - amt.
+ *
  * Finds bills with no aliases at all.
  */
 function nys_url_alias_audit_alias_empty($arg1) {
@@ -395,31 +382,30 @@ function nys_url_alias_audit_alias_empty($arg1) {
       print "$record->alias $record->matched_alias_print_no \r\n";
     }
   }
-
-
 }
 
 /**
- * drush survey-laws - sla.
+ * Future Drush survey-laws - sla.
+ *
  * Fills the nys_url_alias_audit table with laws.
  */
 function nys_url_alias_audit_survey_laws($arg1) {
-
-    print "nys_url_alias_audit_survey_laws($arg1)\r\n";
+  print "nys_url_alias_audit_survey_laws($arg1)\r\n";
 }
 
 /**
- * drush survey-laws-report - slr.
- * REports on the nys_url_alias_audit table with laws in it.
+ * Future Drush survey-laws-report - slr.
+ *
+ * Reports on the nys_url_alias_audit table with laws in it.
  */
 function nys_url_alias_audit_survey_laws_report($arg1) {
-
   print "nys_url_alias_audit_survey_laws_report($arg1)\r\n";
 }
 
 /**
- * drush audit-url-alias - aua.
- * REports on the nys_url_alias_audit table with laws in it.
+ * Drush audit-url-alias - aua.
+ *
+ * Reports on the nys_url_alias_audit table with laws in it.
  */
 function nys_url_alias_audit_audit_ur_alias($arg1) {
 
@@ -489,21 +475,246 @@ function nys_url_alias_audit_audit_ur_alias($arg1) {
 
   print "\r\n\r\n";
 
-
-
-
-
   print "nys_url_alias_audit_audit_bill_alias($arg1)\r\n";
 }
 
+/**
+ * Drush audit-url-alias - lua.
+ *
+ * Reports on the nys_url_alias_audit table with laws in it.
+ */
+function nys_url_alias_audit_lookup_url_alias($arg1) {
 
+  $bill_identifier = '';
 
-/* ========================================= Helper Functions ========================================== */
+  $num_rows = db_query("SELECT COUNT(*) FROM `nys_url_alias_audit`")->fetchField();
+  if ($num_rows == 0) {
+    print "\r\nThere is no data to report on. Run drush survey-bill-alias to load some data before running this command.";
+    return;
+  }
 
+  if (empty($arg1)) {
+    print "\r\nYou did not specify a bill to lookup. Examples:\r\n";
+    print "\r\ndrush lookup-url-alias 2015/A1231\r\n";
+    print "\r\nOR.\r\n";
+    print "\r\ndrush lua 2015/A1231\r\n";
+    return;
+  }
 
+  if (strstr($arg1, '/')) {
+    $arg_array = explode('/', $arg1);
+    if (count($arg_array) == 2 && is_numeric($arg_array[0]) && empty($arg_array[1]) == FALSE && strlen($arg) < 30) {
+      // Valid Bill.
+      if (is_numeric(substr($arg1, -1)) == TRUE) {
+        $bill_identifier = $arg1;
+      }
+      else {
+        $bill_identifier = substr($arg1, 0, strlen($arg1) - 1);
+      }
+    }
+    else {
+      print "\r\nBills should be in the form: 2017/A2596\r\n";
+      return;
+    }
 
+  }
+  else {
+    print "\r\nBills should be in the form: 2017/A2596\r\n";
+    return;
+  };
 
+  print "+---------------------------------------------------------------------------------------+ \r\n";
+  print "| pid \t\t| source \t| alias \t\t\t| language \t\t| \r\n";
+  print "+---------------------------------------------------------------------------------------+ \r\n";
 
+  $alias = "legislation/bills/$bill_identifier%";
+
+  $result = db_query("SELECT * FROM `url_alias` WHERE `alias` LIKE :alias ORDER BY `pid` ASC", array(':alias' => $alias));
+
+  $row_count = $result->rowCount();
+
+  foreach ($result as $record) {
+    print "| ";
+    print_r($record->pid);
+    print "\t| ";
+    print_r($record->source);
+    print "\t| ";
+    print_r($record->alias);
+    print "\t| ";
+    print_r($record->language);
+    print "\t|\r\n";
+
+  }
+
+  print "+---------------------------------------------------------------------------------------+ \r\n";
+  print "$row_count Aliases Found. \r\n";
+
+}
+
+/**
+ * Drush audit-url-alias - aua.
+ *
+ * Reports on the nys_url_alias_audit table with laws in it.
+ */
+function nys_url_alias_url_alias_report($arg1) {
+
+  // See if there is data to report.
+  $num_rows = db_query("SELECT COUNT(*) FROM `nys_url_alias_audit`")->fetchField();
+  if ($num_rows == 0) {
+    print "\r\nThere is no data to report on. Run drush survey-bill-alias to load some data before running this command.";
+    return;
+  }
+
+  $options = array(
+    'base_print_no' => 'Base print_no Report',
+    'ammendment_report' => 'ammendment Report',
+    'print_no_report' => 'print_no Report',
+    'working_well' => 'Working Well `url_alias_quantity` = `matched_alias` + `matched_alias_amendment` Report',
+
+    'not_working_well_1' => 'Not Working (All) so well because `url_alias_quantity` != `matched_alias` + `matched_alias_amendment` Report',
+    'not_working_well_2' => 'not Working (Regular aliases) Report',
+    'not_working_well_3' => 'not Working (Ammendment aliases) Report',
+    'all_rows_nys_url_alias_audit' => 'All Rows of the `nys_url_alias_audit` TABLE Report',
+
+    'all_bill_aliases' => 'All The Bill Aliases from the url_alias table Report',
+    'quantity_aliases_each_base_print_no' => 'Quantity of aliases for each Base print_no using live data from url_alias table Report',
+    'describe_url_alias' => 'Describe `url_alias` Report',
+    'describe_nys_url_alias_audit' => 'Describe `nys_url_alias_audit` Report',
+  );
+
+  $choice = drush_choice($options, dt('What Type Of Report Would You Like ?'));
+
+  echo "\r\n" . $options[$choice] . "\r\n";
+
+  switch ($choice) {
+    case 'base_print_no':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias_print_no`, `matched_alias_print_no` FROM `nys_url_alias_audit` ORDER BY `matched_alias_print_no`";
+      break;
+
+    case 'ammendment_report':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias_amendment`, `matched_alias_amendment` FROM `nys_url_alias_audit` ORDER BY `matched_alias_amendment`";
+      break;
+
+    case 'print_no_report':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias`, `matched_alias` FROM `nys_url_alias_audit` ORDER BY `matched_alias`";
+      break;
+
+    case 'working_well':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias` FROM `nys_url_alias_audit` WHERE `url_alias_quantity` = `matched_alias` + `matched_alias_amendment`";
+      break;
+
+    case 'not_working_well_1':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias`,
+ `matched_alias`, `matched_alias_amendment`, `matched_alias_print_no`, url_alias_quantity
+  FROM `nys_url_alias_audit` WHERE `url_alias_quantity` != `matched_alias` + `matched_alias_amendment` ORDER BY `url_alias`";
+      break;
+
+    case 'not_working_well_2':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias`,
+ `matched_alias`, `matched_alias_amendment`, `matched_alias_print_no`, url_alias_quantity
+  FROM `nys_url_alias_audit` WHERE `print_no` = `base_print_no` AND `url_alias_quantity` != `matched_alias` + `matched_alias_amendment` ORDER BY `url_alias`";
+      break;
+
+    case 'not_working_well_3':
+         $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias`,
+ `matched_alias`, `matched_alias_amendment`, `matched_alias_print_no`, url_alias_quantity
+  FROM `nys_url_alias_audit` WHERE `print_no` != `base_print_no` AND `url_alias_quantity` != `matched_alias` + `matched_alias_amendment` ORDER BY `url_alias`";
+      break;
+
+    case 'all_rows_nys_url_alias_audit':
+         $sql = "SELECT * FROM `nys_url_alias_audit`";
+      break;
+
+    case 'all_bill_aliases':
+         $sql = "SELECT * FROM `url_alias` WHERE `alias` LIKE 'legislation/bills/%'";
+      break;
+
+    case 'quantity_aliases_each_base_print_no':
+         $sql = "SELECT `nid`, `session`, `print_no`, `base_print_no`, CONCAT('legislation/bills/',`session`, '/',`base_print_no`) AS `path`, (SELECT COUNT(*) FROM `url_alias` WHERE `alias` = `path`) AS `num_aliases` FROM `nys_url_alias_audit` ORDER BY `num_aliases`";
+      break;
+
+    case 'describe_url_alias':
+         $sql = "describe `url_alias`";
+      break;
+
+    case 'describe_nys_url_alias_audit':
+         $sql = "describe `nys_url_alias_audit`";
+      break;
+
+    default:
+         $sql = "";
+  }
+
+  $csv = drush_get_option('csv', FALSE);
+  $query = drush_get_option('sql', FALSE);
+
+  if ($query == TRUE) {
+    print "\r\n\r\n";
+    print "SQL\r\n\r\n";
+    print $sql;
+    print "\r\n\r\n";
+    return;
+  }
+
+  $result = db_query($sql);
+  $row_count = $result->rowCount();
+  $current_row = 1;
+
+  if ($row_count > 0) {
+
+    if ($csv == FALSE) {
+      print "\r\n---------------------------------------------------------------------------------------------------------------------";
+    }
+
+    foreach ($result as $record) {
+      // Emit the Column Titles - Header.
+      if ($current_row == 1) {
+        print "\r\n";
+        if ($csv == FALSE) {
+          print "|  ";
+        }
+        foreach ($record as $key => $value) {
+          if ($csv == FALSE) {
+            print "  $key\t|";
+          }
+          else {
+            print $key . ',';
+          }
+        }
+
+        print "\r\n";
+      }
+
+      // Emit the row data.
+      if ($csv == FALSE) {
+        print "|  ";
+      }
+      foreach ($record as $key => $value) {
+        if ($csv == FALSE) {
+          print "  $value\t|";
+        }
+        elseif ($csv == TRUE) {
+          print $value . ',';
+        }
+      }
+
+      print "\r\n";
+
+      $current_row++;
+
+    }
+
+    if ($csv == FALSE) {
+      print "---------------------------------------------------------------------------------------------------------------------\r\n";
+      print $row_count . "  Rows Returned.";
+    }
+
+  }
+  elseif ($row_count == 0) {
+    echo "No Results From Query.\r\n";
+  }
+
+}
 
 /**
  * Helper function delete_url_alias($pid, $source, $alias, $language).
@@ -545,65 +756,5 @@ function display_url_aliases_by_alias($alias) {
     $language = $record->language;
     print "   | $pid \t| $source \t| $alias \t\t| $language | \r\n";
   }
-
-}
-
-/**
- * alsdflsdkjf;ls;jkf;aslfjk;asl;kfj;salkdfj;aslfcjk.
- */
- /*
-function nys_url_alias_audit_remove_duplicates($arg1) {
-
-display_url_aliases_by_alias($arg1);
-
-
-//print "nys_url_alias_audit_remove_duplicates($arg1)";
-
-}
-*/
-
-
-/**
- * alsdflsdkjf;ls;jkf;aslfjk;asl;kfj;salkdfj;aslfcjk.
- */
-function nys_url_alias_audit_audit_remove_duplicates_compact($arg1) {
-print "nys_url_alias_audit_audit_remove_duplicates_compact($arg1)";
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * Implements the drush clear-all-statutes  command.
- */
-function XXXnys_school_delete_clear_all_schools($arg1) {
-
-  drupal_set_time_limit(20000);
-
-  $result = db_query("SELECT `nid` FROM `node` WHERE `type` = 'school';");
-
-  $count = 0;
-
-  foreach ($result as $record) {
-    $nid = $record->nid;
-    node_delete($nid);
-    print "Removing Node - $nid \r\n";
-    $count++;
-  }
-
-  print "-------------------------------\r\n";
-  print "Deleted $count School Nodes.\r\n";
 
 }

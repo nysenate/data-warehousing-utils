@@ -16,35 +16,43 @@ alias-empty		amt	Remove short URL aliases for ammendments.
 
 audit-url-alias		aha	General Audit of URL Aliases for Bills, Resolutions and Laws.
 
+lookup-url-alias  lua   Show all the URL Aliases.
+
+url-alias-report  uar   General Audit of URL Aliases for Bills, Resolutions and Laws.
+
+
+
+
+
 
 You need to run survey-bill-alias for some of these to run.
 
 
 alias-short-amendments
 Finds aliases like these
-legislation/bills/2009/a10257a 
-legislation/bills/2009/a10257b 
-legislation/bills/2009/a10257c 
-legislation/bills/2009/a10257d 
+legislation/bills/2009/a10257a
+legislation/bills/2009/a10257b
+legislation/bills/2009/a10257c
+legislation/bills/2009/a10257d
 
 
 remove-alias-short-amendments
 Removes aliases like these
-legislation/bills/2009/a10257a 
-legislation/bills/2009/a10257b 
-legislation/bills/2009/a10257c 
-legislation/bills/2009/a10257d 
+legislation/bills/2009/a10257a
+legislation/bills/2009/a10257b
+legislation/bills/2009/a10257c
+legislation/bills/2009/a10257d
 
 
 alias-not-original
 Finds Aliases like this
-|  31054 | node/5016851 | legislation/bills/2009/a10257                    | und      | 
+|  31054 | node/5016851 | legislation/bills/2009/a10257                    | und      |
 
 remove-not-original
 Removes older aliases like this
-|  31054 | node/5016851 | legislation/bills/2009/a10257                    | und      | 
+|  31054 | node/5016851 | legislation/bills/2009/a10257                    | und      |
 
 
 And Leaves the newer Active Alias like this alone.
-| 344599 | node/5016871 | legislation/bills/2009/A10257                    | und      | 
+| 344599 | node/5016871 | legislation/bills/2009/A10257                    | und      |
 
