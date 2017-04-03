@@ -2,7 +2,7 @@
 
 /**
  * @file
- * File nys_school_delete.drush.inc.
+ * File nys_url_alias_audit.drush.inc.
  */
 
 /**
@@ -277,6 +277,7 @@ function drush_nys_url_alias_audit_alias_short_amendments($arg1 = NULL) {
  *   An optional argument
  */
 function drush_nys_url_alias_audit_remove_alias_short_amendments($arg1 = NULL) {
+  drush_confirm('Are you sure you want to clear the duplicate `short` amendment url aliases. ?', $indent = 0);
   $retval = nys_url_alias_audit_remove_alias_short_amendments($arg1);
   drush_log($retval, 'ok');
 
@@ -285,7 +286,7 @@ function drush_nys_url_alias_audit_remove_alias_short_amendments($arg1 = NULL) {
 }
 
 /**
- * Callback function for drush clear-all-schools.
+ * Callback function for drush alias-not-original - ano.
  *
  * Callback is called by using drush_hook_command() where
  * hook is the name of the module (MYMODULE) and command is the name of
@@ -304,7 +305,7 @@ function drush_nys_url_alias_audit_alias_not_original($arg1 = NULL) {
 }
 
 /**
- * Callback function for drush clear-all-schools.
+ * Callback function for drush remove-not-original - rno.
  *
  * Callback is called by using drush_hook_command() where
  * hook is the name of the module (MYMODULE) and command is the name of

@@ -645,6 +645,10 @@ function nys_url_alias_url_alias_report($arg1) {
          $sql = "";
   }
 
+  if (empty($sql)) {
+    return;
+  }
+
   $csv = drush_get_option('csv', FALSE);
   $query = drush_get_option('sql', FALSE);
 
