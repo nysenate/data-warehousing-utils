@@ -166,20 +166,16 @@ function nys_url_alias_audit_drush_command() {
     'aliases' => array('lua'),
   );
 
-  $items['url-alias-report'] = array(
-    'description' => dt('General Audit of URL Aliases for Bills, Resolutions and Laws.'),
+  $items['update-bills'] = array(
+    'description' => dt('Touches Bills and Does An Update.'),
     'arguments'   => array(
-      'arg1'    => dt('An optional argument'),
-    ),
-    'options' => array(
-      'csv' => 'Return the Results in a csv format.',
-      'sql' => 'Return the SQL not the data.',
+      'arg1'    => dt('An optional nid or csv list of nids in quotes.'),
     ),
     'examples' => array(
-      'Standard example' => 'drush url-alias-report',
-      'Argument example' => 'drush url-alias-report',
+      'Standard example' => 'update-bills',
+      'Argument example' => 'update-bills 12345,123456',
     ),
-    'aliases' => array('uar'),
+    'aliases' => array('ubi'),
   );
 
   return $items;
@@ -438,4 +434,36 @@ function drush_nys_url_alias_audit_url_alias_report($arg1 = NULL) {
 
   // Log to the command line with an OK status.
   drush_log('Completed Audit URL Aliases Report.', 'ok');
+}
+
+/**
+ * Callback function for drush update-bills - ubi.
+ *
+ * Callback is called by using drush_hook_command() where
+ * hook is the name of the module (MYMODULE) and command is the name of
+ * the Drush command with all "-" characters
+ * converted to "_" characters (my_command).
+ *
+ * $arg1
+ *   An optional argument
+ */
+function drush_nys_url_alias_audit_update_bills($arg1 = NULL) {
+  if (empty($arg1)) {
+    drush_confirm('Are you sure you want to update ALL Bills. ?', $indent = 0);
+  }
+  else {
+    if (strlen($arg1) > 15) {
+      $teaser = substr($arg1, 0, 15) . '...';
+    }
+    else {
+      $teaser = $arg1;
+    }
+    drush_confirm("Are you sure you want to update Bills ($teaser) ?", $indent = 0);
+  }
+
+  $retval = nys_url_alias_audit_update_bills($arg1);
+  drush_log($retval, 'ok');
+
+  // Log to the command line with an OK status.
+  drush_log('Completed Update Bills.', 'ok');
 }

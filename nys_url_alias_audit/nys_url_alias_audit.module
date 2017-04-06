@@ -721,6 +721,60 @@ function nys_url_alias_url_alias_report($arg1) {
 }
 
 /**
+ * Drush update-bills - ubi.
+ *
+ * Reports on the nys_url_alias_audit table with laws in it.
+ */
+function nys_url_alias_audit_update_bills($arg1) {
+  drupal_set_time_limit(20000);
+
+  if (empty($arg1)) {
+    // Update All Bills.
+    db_truncate('nys_url_alias_audit_matched')->execute();;
+    $result = db_query("INSERT `nys_url_alias_audit_matched` SELECT `nid`, 0, 0, 0, 0 FROM `node` WHERE `type` = 'bill'");
+  }
+  elseif ($arg1 == 'CONTINUE' || $arg1 == 'continue') {
+    // Dont Truncate.
+  }
+  else {
+    // Update One or More bills.
+    db_truncate('nys_url_alias_audit_matched')->execute();;
+    $result = db_query("INSERT `nys_url_alias_audit_matched` SELECT `nid`, 0, 0, 0, 0 FROM `node` WHERE `type` = 'bill' AND `nid` IN ($arg1)");
+  }
+
+  $result = db_query("SELECT `nid` FROM `nys_url_alias_audit_matched` WHERE `matched_alias` = 0");
+
+  $count = 0;
+  $start = time();
+
+  print "\r\n-------------------------------\r\n";
+  print "Updating Bill Nodes.          |\r\n";
+  print "-------------------------------\r\n";
+
+  foreach ($result as $record) {
+    $nid = $record->nid;
+
+    $node = node_load($nid);
+    if ($node !== FALSE) {
+      _set_matched_alias($nid);
+      node_save($node);
+    }
+
+    print "Updating Node - $nid \r\n";
+    $count++;
+  }
+
+  print "-------------------------------\r\n";
+  print "Updated $count Bill Nodes.\r\n";
+
+  $end = time();
+  $elapsed_seconds = $end = $start;
+  $elapsed_minutes = $elapsed_seconds / 60;
+  print "\r\n\r\nElapsed Time $elapsed_minutes Minutes.\r\n";
+
+}
+
+/**
  * Helper function delete_url_alias($pid, $source, $alias, $language).
  */
 function nys_url_alias_audit_delete_url_alias($pid, $source, $alias, $language) {
@@ -747,7 +801,7 @@ function display_url_aliases_by_source($source) {
 }
 
 /**
- * Helper Function isplay_url_aliases_by_alias($alias).
+ * Helper Function display_url_aliases_by_alias($alias).
  */
 function display_url_aliases_by_alias($alias) {
 
@@ -761,4 +815,11 @@ function display_url_aliases_by_alias($alias) {
     print "   | $pid \t| $source \t| $alias \t\t| $language | \r\n";
   }
 
+}
+
+/**
+ * Helper Function isplay_url_aliases_by_alias($alias).
+ */
+function _set_matched_alias($nid) {
+  $result = db_query("UPDATE `nys_url_alias_audit_matched` SET `matched_alias` = 1 WHERE `nid` = :nid", array(':nid' => $nid));
 }
