@@ -194,7 +194,7 @@ function nys_url_alias_audit_remove_duplicates($arg1) {
 /**
  * Drush alias-short-amendments - asa.
  *
- * Finds short ammendment aliases like legislation/bills/2015/A6031A.
+ * Finds short amendment aliases like legislation/bills/2015/A6031A.
  */
 function nys_url_alias_audit_alias_short_amendments($arg1) {
 
@@ -212,7 +212,7 @@ function nys_url_alias_audit_alias_short_amendments($arg1) {
 
   $quantity_of_short_amendlent_aliases = db_query("SELECT COUNT(*) FROM `nys_url_alias_audit` WHERE RIGHT(`print_no`,1) IN ('A','B','C','D','E','F','G','a','b','c','d','e','f','g') AND matched_alias = 1")->fetchField();
 
-  print "Number of Bills with short ammendlent url_aliaes = $quantity_of_short_amendlent_aliases \r\n";
+  print "Number of Bills with short amendlent url_aliaes = $quantity_of_short_amendlent_aliases \r\n";
 
   if ($quantity_of_short_amendlent_aliases > 0) {
 
@@ -249,7 +249,7 @@ function nys_url_alias_audit_remove_alias_short_amendments($arg1) {
 
   $quantity_of_short_amendlent_aliases = db_query("SELECT COUNT(*) FROM `nys_url_alias_audit` WHERE RIGHT(`print_no`,1) IN ('A','B','C','D','E','F','G','a','b','c','d','e','f','g') AND matched_alias = 1")->fetchField();
 
-  print "Number of Bills with short ammendlent url_aliaes = $quantity_of_short_amendlent_aliases \r\n";
+  print "Number of Bills with short amendlent url_aliaes = $quantity_of_short_amendlent_aliases \r\n";
 
   if ($quantity_of_short_amendlent_aliases > 0) {
 
@@ -567,13 +567,13 @@ function nys_url_alias_url_alias_report($arg1) {
 
   $options = array(
     'base_print_no' => 'Base print_no Report',
-    'ammendment_report' => 'ammendment Report',
+    'amendment_report' => 'amendment Report',
     'print_no_report' => 'print_no Report',
     'working_well' => 'Working Well `url_alias_quantity` = `matched_alias` + `matched_alias_amendment` Report',
 
     'not_working_well_1' => 'Not Working (All) so well because `url_alias_quantity` != `matched_alias` + `matched_alias_amendment` Report',
     'not_working_well_2' => 'not Working (Regular aliases) Report',
-    'not_working_well_3' => 'not Working (Ammendment aliases) Report',
+    'not_working_well_3' => 'not Working (Amendment aliases) Report',
     'all_rows_nys_url_alias_audit' => 'All Rows of the `nys_url_alias_audit` TABLE Report',
 
     'all_bill_aliases' => 'All The Bill Aliases from the url_alias table Report',
@@ -591,7 +591,7 @@ function nys_url_alias_url_alias_report($arg1) {
          $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias_print_no`, `matched_alias_print_no` FROM `nys_url_alias_audit` ORDER BY `matched_alias_print_no`";
       break;
 
-    case 'ammendment_report':
+    case 'amendment_report':
          $sql = "SELECT `session`, `print_no`, `base_print_no`, `url_alias_amendment`, `matched_alias_amendment` FROM `nys_url_alias_audit` ORDER BY `matched_alias_amendment`";
       break;
 

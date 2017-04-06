@@ -24,21 +24,21 @@ url-alias-report  uar   General Audit of URL Aliases for Bills, Resolutions and 
                         --sql   This option outputs the sql instead of the query results.
 
 What Type Of Report Would You Like ?
- [0]   :  Cancel                                                          
- [1]   :  Base print_no Report                                            
- [2]   :  ammendment Report                                               
- [3]   :  print_no Report                                                 
- [4]   :  Working Well `url_alias_quantity` = `matched_alias` +           
-          `matched_alias_amendment` Report                                
- [5]   :  Not Working (All) so well because `url_alias_quantity` !=       
-          `matched_alias` + `matched_alias_amendment` Report              
- [6]   :  not Working (Regular aliases) Report                            
- [7]   :  not Working (Ammendment aliases) Report                         
- [8]   :  All Rows of the `nys_url_alias_audit` TABLE Report              
- [9]   :  All The Bill Aliases from the url_alias table Report            
- [10]  :  Quantity of aliases for each Base print_no using live data from 
-          url_alias table Report                                          
- [11]  :  Describe `url_alias` Report                                     
+ [0]   :  Cancel
+ [1]   :  Base print_no Report
+ [2]   :  amendment Report                                               
+ [3]   :  print_no Report
+ [4]   :  Working Well `url_alias_quantity` = `matched_alias` +
+          `matched_alias_amendment` Report
+ [5]   :  Not Working (All) so well because `url_alias_quantity` !=
+          `matched_alias` + `matched_alias_amendment` Report
+ [6]   :  not Working (Regular aliases) Report
+ [7]   :  not Working (Amendment aliases) Report
+ [8]   :  All Rows of the `nys_url_alias_audit` TABLE Report
+ [9]   :  All The Bill Aliases from the url_alias table Report
+ [10]  :  Quantity of aliases for each Base print_no using live data from
+          url_alias table Report
+ [11]  :  Describe `url_alias` Report
  [12]  :  Describe `nys_url_alias_audit` Report
 
 
@@ -74,4 +74,3 @@ Removes older aliases like this
 
 And Leaves the newer Active Alias like this alone.
 | 344599 | node/5016871 | legislation/bills/2009/A10257                    | und      |
-
