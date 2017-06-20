@@ -244,7 +244,7 @@ function grouper_sorted_summary_page() {
     }
   }
 
-  return grouper_emit_menu('/admin/grouper/sorted/') . theme('table', array('header' => $header, 'rows' => $rows)) . count($rows) . ' | uva= ' . count($unique_variables_array) . ' | va= ' . count($variables_array);
+  return grouper_emit_menu('/admin/grouper/sorted/') . theme('table', array('header' => $header, 'rows' => $rows)) . count($rows);
 
 }
 
