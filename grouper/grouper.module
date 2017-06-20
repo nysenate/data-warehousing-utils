@@ -1,0 +1,775 @@
+<?php
+/**
+ * @file
+ * Grouper Module.
+ */
+
+/**
+ * Implements hook_access().
+ */
+function grouper_pages_access($arg) {
+
+  $rid = variable_get('user_admin_role', 0);
+
+  if (user_has_role($rid)) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+
+}
+
+/**
+ * Implements hook_menu().
+ */
+function grouper_menu() {
+  $items = array();
+
+  $items['admin/grouper'] = array(
+    'title' => 'Grouper',
+    'description' => 'Grouper Summary',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_summary_page',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/grouper/sorted'] = array(
+    'title' => 'Grouper Sorted Summary',
+    'description' => 'Grouper Sorted Summary',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_sorted_summary_page',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/grouper/detail'] = array(
+    'title' => 'Grouper Detail',
+    'description' => 'Grouper Detail',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_detail_page',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/repro'] = array(
+    'title' => 'Grouper Reproduce',
+    'description' => 'Grouper Reproduce',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(3, 4),
+    'page callback' => 'grouper_reproduce',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/rollback'] = array(
+    'title' => 'Grouper Reproduce',
+    'description' => 'Grouper Reproduce',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(3),
+    'page callback' => 'grouper_rollback',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/max-wid'] = array(
+    'title' => 'Max wid',
+    'description' => 'Max wid',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(3),
+    'page callback' => 'grouper_max_wid',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/warnings'] = array(
+    'title' => 'Grouper Warnings',
+    'description' => 'Grouper Warnings',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_warnings_page',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/pages'] = array(
+    'title' => 'Grouper Pages With Errors',
+    'description' => 'Grouper Pages With Errors',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_pages_page',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/errors'] = array(
+    'title' => 'Grouper Errors',
+    'description' => 'Grouper Errors',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_errors_page',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/distribution'] = array(
+    'title' => 'Grouper Error Distribution',
+    'description' => 'Grouper Error Distribution',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_distribution',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/access-denied'] = array(
+    'title' => 'Grouper Access Denied Pages',
+    'description' => 'Grouper Access Denied Pages',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_access_denied',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/page-not-found'] = array(
+    'title' => 'Grouper Pages Not Found',
+    'description' => 'Grouper Pages Not Found',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_pages_not_found',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/grouper/menu-links'] = array(
+    'title' => 'Grouper Menu Links',
+    'description' => 'Grouper Menu Links',
+    'access arguments' => array('access content'),
+    'access callback'  => 'grouper_pages_access',
+    'page arguments' => array(),
+    'page callback' => 'grouper_menu_links',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Renders the Grouper Summary page.
+ */
+function grouper_summary_page() {
+  drupal_add_js(drupal_get_path('module', 'grouper') . '/grouper.js');
+  $query = "SELECT COUNT(`location`) AS `num_pages`, `variables`, `location` FROM `watchdog` WHERE `type` = 'php' AND (`variables` != '' AND `variables` IS NOT NULL) GROUP BY `variables` ORDER BY `num_pages` DESC";
+  $result = db_query($query);
+
+  $header = array('Number of Pages', 'Message', 'Action');
+  $num_pages_array = array();
+  $variables_array = array();
+  $locations_array = array();
+
+  // Populate the arrays with data.
+  foreach ($result as $record) {
+
+    $num_pages_array[] = $record->num_pages;
+    $variables_array[] = $record->variables;
+    $locations_array[] = grouper_render_location($record->location);
+    $rendered_variables_array[] = grouper_render_dblog_message($record->variables, TRUE);
+  }
+
+  // Get rid of duplicates.
+  $unique_variables_array = array_unique($rendered_variables_array);
+  foreach ($unique_variables_array as $key => $variable) {
+
+    $link_loc = '/admin/grouper/detail/?err=' . urlencode($variables_array[$key]);
+
+    $link_markup = "<a href='$link_loc' target='_blank'>$rendered_variables_array[$key]</a>";
+
+    $action_markup = '<a href="' . $locations_array[$key] . '" title="' . grouper_render_location($locations_array[$key]) . '" target="_blank" class="page-link"><b>L</b></a> &nbsp;' .
+                     '<input type="radio" value="0" location="' . grouper_render_location($locations_array[$key]) . '" class="repro-button" title="Reproduce and show messages" />';
+
+    $rows[] = array($num_pages_array[$key], $link_markup, $action_markup);
+  }
+
+  return grouper_emit_menu('/admin/grouper/') . theme('table', array('header' => $header, 'rows' => $rows)) . count($rows) . ' | uva= ' . count($unique_variables_array) . ' | va= ' . count($variables_array);
+}
+
+/**
+ * Renders the Grouper Summary Sorted by path and file name..
+ */
+function grouper_sorted_summary_page() {
+
+  $query = "SELECT COUNT(`location`) AS `num_pages`, `variables`, `location` FROM `watchdog` WHERE `type` = 'php' AND (`variables` != '' AND `variables` IS NOT NULL) GROUP BY `variables` ORDER BY `num_pages` DESC";
+  $result = db_query($query);
+
+  $header = array('Number of Pages', 'Message', 'Action');
+  $num_pages_array = array();
+  $variables_array = array();
+  $paths_array = array();
+  $locations_array = array();
+
+  // Populate the arrays with data.
+  foreach ($result as $record) {
+
+    $num_pages_array[] = $record->num_pages;
+    $variables_array[] = $record->variables;
+    $locations_array[] = $record->location;
+    $rendered_variables_array[] = grouper_render_dblog_message($record->variables, TRUE);
+    $paths_array[] = grouper_render_path($record->variables, TRUE);
+  }
+
+  // Sort the paths array.
+  asort($paths_array);
+
+  // Get rid of duplicates.
+  $unique_variables_array = array_unique($rendered_variables_array);
+
+  foreach ($paths_array as $key => $path) {
+    if (array_key_exists($key, $unique_variables_array)) {
+
+      $link_loc = '/admin/grouper/detail/?err=' . urlencode($variables_array[$key]);
+
+      $link_markup = "<a href='$link_loc' target='_blank'>$rendered_variables_array[$key]</a>" .
+                     "<br />&nbsp; &nbsp; &nbsp;" . grouper_render_link($locations_array[$key]);
+
+      $action_markup = '<a href="' . $locations_array[$key] . '" title="' . grouper_render_location($locations_array[$key]) . '" target="_blank" class="page-link"><b>L</b></a> &nbsp;' .
+                       '<input type="radio" value="0" location="' . grouper_render_location($locations_array[$key]) . '" class="repro-button" title="Reproduce and show messages" />';
+
+      $rows[] = array($num_pages_array[$key], $link_markup, $action_markup);
+
+    }
+  }
+
+  return grouper_emit_menu('/admin/grouper/sorted/') . theme('table', array('header' => $header, 'rows' => $rows)) . count($rows) . ' | uva= ' . count($unique_variables_array) . ' | va= ' . count($variables_array);
+
+}
+
+/**
+ * Renders the Grouper Details page.
+ */
+function grouper_detail_page() {
+
+  if (isset($_GET['err'])) {
+    $error_raw = $_GET['err'];
+    $error = urldecode($error_raw);
+
+    $query = "SELECT  COUNT(`location`) AS `num_pages`, `location`, `wid` FROM `watchdog` WHERE `variables` = :variables GROUP BY `variables` ORDER BY `num_pages` DESC;";
+
+    $result = db_query($query, array(':variables' => $error));
+
+    $header = array('Number of Pages', 'Pages With This Error', 'Log Details');
+    $rows = array();
+
+    foreach ($result as $record) {
+      $num_pages = $record->num_pages;
+      $link_markup = "<a href='$record->location' target='_blank'>$record->location</a>";
+
+      if ($num_pages == 1) {
+        $error_page_loc = '/admin/reports/event/' . $record->wid . '/';
+      }
+      elseif ($num_pages > 1) {
+        $error_page_loc = '/admin/grouper/warnings/?page=' . urlencode($record->location) . '&err=' . $error_raw;
+      }
+
+      $error_page_link_markup = "<a href='$error_page_loc' target='_blank'>Details</a>";
+
+      $rows[] = array($num_pages, $link_markup, $error_page_link_markup);
+
+    }
+
+    $message = grouper_render_dblog_message($error, TRUE);
+    $h3 = "<h3>$message</h3><br />";
+    return $h3 . theme('table', array('header' => $header, 'rows' => $rows));
+  }
+
+}
+
+/**
+ * Exercises a page with curl.
+ *
+ * Also returns maxwid in the pages rollback button.
+ */
+function grouper_reproduce($starting_wid, $num_bytes_loaded) {
+
+  if (isset($_GET['loc'])) {
+    $loc = $_GET['loc'];
+    $location = urldecode($loc);
+  }
+  else {
+    print 'No url was supplied';
+  }
+
+  // Find the warnings since the message.
+  $query = "SELECT `wid`, `type`, `variables` FROM `watchdog` WHERE `wid` > :max_wid ORDER BY `type`";
+  $result = db_query($query, array(':max_wid' => $starting_wid));
+
+  $header = array('Type', 'Message', 'Link To Message');
+  $rows = array();
+
+  foreach ($result as $record) {
+    $warning_message = grouper_render_dblog_message($record->variables);
+    $warning_page_link_markup = '<a href="/admin/reports/event/' . $record->wid . '/" target="_blank">Details</a>';
+    $rows[] = array($record->type, $warning_message, $warning_page_link_markup);
+  }
+
+  $url = arg(2);
+
+  return
+  "<h3><b>URL:</b> <a href='$location' target='_blank'>$location</a>  &nbsp; &nbsp; &nbsp; | &nbsp; &nbsp; $num_bytes_loaded &nbsp; &nbsp;<b>Bytes</b> </h3><br />" .
+  theme('table', array('header' => $header, 'rows' => $rows)) .
+  '<br><button onClick="grouper_rollback(' . $starting_wid . ')">Rollback and Close This Window</button>';
+
+}
+
+
+/**
+ * Gets the currnt max_wid.
+ */
+function grouper_max_wid() {
+
+  header('Content-Type: application/json');
+
+  $max_wid = db_query('SELECT MAX(`wid`) FROM {watchdog}')->fetchField();
+  $raw_output_arr = array('max_wid' => $max_wid);
+  print json_encode($raw_output_arr);
+}
+
+/**
+ * Eliminates errors in the error log added by reproduce.
+ */
+function grouper_rollback($arg1) {
+
+  $new_maxwids = db_query('SELECT MAX(`wid`) FROM {watchdog}')->fetchField();
+
+  $new_wids = $new_maxwids - $arg1;
+
+  db_query("DELETE FROM {watchdog} WHERE `wid` > :arg1", array(':arg1' => $arg1));
+
+}
+
+/**
+ * Renders the Grouper Warnings page.
+ *
+ * Meant to get aclled by ajax just before closing the
+ * results of the reproduce call.
+ */
+function grouper_warnings_page($error, $location) {
+
+  if (isset($_GET['page']) && isset($_GET['err'])) {
+    $page = urldecode($_GET['page']);
+
+    $error = urldecode($_GET['err']);
+
+    $query = "SELECT `location`, `wid`, `timestamp` FROM `watchdog` WHERE location = :location AND `variables` = :variables ORDER BY `timestamp` DESC";
+    $result = db_query($query, array(':location' => $page, ':variables' => $error));
+    $num_rows = $result->rowCount();
+
+    $header = array('Page', 'Warning Log Entries');
+    $rows = array();
+
+    foreach ($result as $record) {
+      $link_markup = "<a href='$record->location' target='_blank'>$record->location</a>";
+
+      $error_page_loc = '/admin/reports/event/' . $record->wid . '/';
+      $occured = date("d-m-Y H:i:s", $record->timestamp);
+      $error_page_markup = "<a href='$error_page_loc' target='_blank'>$occured - Details</a>";
+
+      $row = array($link_markup, $error_page_markup);
+      $rows[] = $row;
+    }
+
+    $message = grouper_render_dblog_message($error, TRUE);
+    $h3 = "<h3>$message</h3><br />";
+    $h32 = "<h3>$page ($num_rows)</h3><br />";
+    return $h3 . $h32 . theme('table', array('header' => $header, 'rows' => $rows));
+
+  }
+
+}
+
+/**
+ * Renders the Grouper Pages With Errors page.
+ */
+function grouper_pages_page() {
+
+  $query = "SELECT COUNT(`wid`) AS `num_pages`, `location` FROM `watchdog` WHERE `type` = 'php' GROUP BY `location` ORDER BY `num_pages` DESC LIMIT 15000";
+  $result = db_query($query);
+
+  $header = array('Number of Errors', 'Errors For Page', 'Actual Page');
+  $rows = array();
+
+  foreach ($result as $record) {
+    $error_link_loc = '/admin/grouper/errors/?page=' . urlencode($record->location);
+    $lerror_link_name = $record->location;
+    $error_link_markup = "<a href='$error_link_loc' target='_blank'>$lerror_link_name</a>";
+
+    $link_markup = "<a href='$record->location' target='_blank'>Link to Page</a>";
+    $rows[] = array($record->num_pages, $error_link_markup, $link_markup);
+  }
+
+  return grouper_emit_menu('/admin/grouper/pages/') . theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+/**
+ * Renders the Grouper Errors page.
+ */
+function grouper_errors_page() {
+
+  if (isset($_GET['page'])) {
+    $page_raw = $_GET['page'];
+    $location = urldecode($page_raw);
+
+    $query = "SELECT * FROM `watchdog` WHERE `type` = 'php' AND `location` = :location LIMIT 100";
+
+    $result = db_query($query, array(':location' => $location));
+
+    $header = array('Message');
+    $rows = array();
+
+    foreach ($result as $record) {
+      $link_loc = '/admin/grouper/detail/?err=' . urlencode($record->variables);
+      $link_name = grouper_render_dblog_message($record->variables, TRUE);
+      $rows[] = array("<a href='$link_loc' target='_blank'>$link_name</a>");
+    }
+
+    $h3 = "<h3><a href=\"$location\" target=\"_blank\">$location</a></h3><br />";
+    return $h3 . theme('table', array('header' => $header, 'rows' => $rows));
+  }
+}
+
+/**
+ * Renders the Grouper Error Distribution page.
+ */
+function grouper_distribution() {
+
+  $query = "SELECT COUNT(`location`) AS `num_pages`, `type` FROM `watchdog` GROUP BY `type`";
+  $result = db_query($query);
+
+  $header = array('Number of Pages', 'Type of Message');
+  $rows = array();
+
+  foreach ($result as $record) {
+    $rows[] = array($record->num_pages, $record->type);
+  }
+
+  return grouper_emit_menu('/admin/grouper/distribution/') . theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+/**
+ * Renders the Grouper Access Denied Pages page.
+ */
+function grouper_access_denied() {
+
+  drupal_add_js(drupal_get_path('module', 'grouper') . '/grouper.js');
+
+  $query = "SELECT `location`, `timestamp` FROM `watchdog` WHERE `type` = 'access denied' ORDER BY `timestamp` DESC";
+  $result = db_query($query);
+
+  $header = array('Pages');
+  $rows = array();
+
+  foreach ($result as $record) {
+    $rows[] = array("<a class='access-denied' href='$record->location' target='_blank'>$record->location</a>");
+  }
+
+  return grouper_emit_menu('/access-denied/') . grouper_emit_exerciser() . theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+/**
+ * Renders the Grouper Pages Not Found page.
+ */
+function grouper_pages_not_found() {
+
+  $query = "SELECT `location`, `timestamp` FROM `watchdog` WHERE `type` = 'page not found' ORDER BY `timestamp` DESC";
+  $result = db_query($query);
+
+  $header = array('Pages');
+  $rows = array();
+
+  foreach ($result as $record) {
+    $rows[] = array("<a class='page-not-found' href='$record->location' target='_blank'>$record->location</a>");
+  }
+
+  return grouper_emit_menu('/page-not-found/') . theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+/**
+ * Renders the Grouper Menu Links page.
+ */
+function grouper_menu_links() {
+  drupal_add_js(drupal_get_path('module', 'grouper') . '/grouper.js');
+
+  // Get the menu links on the system.
+  $menu_links_array = grouper_get_menu_links();
+
+  $header = array('Menus');
+  $rows = array();
+
+  foreach ($menu_links_array as $link_loc => $link_name) {
+    if (strncmp($link_loc, 'grouper-', strlen('grouper-')) == 0) {
+      $rows[] = array('<b><i>' . $link_name . '</i></b>');
+    }
+    else {
+      if (strncmp($link_name, 'Could Not Resolve Token', strlen('Could Not Resolve Token')) != 0) {
+        $rows[] = array("<a class='access-denied' href='$link_loc' target='_blank'>$link_name</a>");
+      }
+      else {
+        $rows[] = array($link_name);
+      }
+    }
+  }
+
+  return grouper_emit_menu('/menu-links/') . grouper_emit_exerciser() . theme('table', array('header' => $header, 'rows' => $rows));
+
+}
+
+/**
+ * Helper Functions.
+ */
+
+/**
+ * Renders the Grouper dblog variables column in a human readable format.
+ *
+ * @param string $variables
+ *   The serialized error message.
+ * @param bool $shorten_path
+ *   Shorten the path to remove the beginning.
+ */
+function grouper_render_dblog_message($variables, $shorten_path = FALSE) {
+
+  if (isset($variables)) {
+    $variables_array = unserialize($variables);
+    if (is_array($variables_array) &&
+        isset($variables_array['%type']) &&
+        isset($variables_array['!message']) &&
+        isset($variables_array['%function']) &&
+        isset($variables_array['%file']) &&
+        isset($variables_array['%line']) &&
+        isset($variables_array['severity_level'])) {
+
+      $type = $variables_array['%type'];
+      $message = $variables_array['!message'];
+      $function_name = $variables_array['%function'];
+      if ($shorten_path) {
+        $start_pos = stripos($variables_array['%file'], '/code/');
+        if ($start_pos !== FALSE) {
+          $file = '...' . substr($variables_array['%file'], $start_pos);
+        }
+        else {
+          $file = $variables_array['%file'];
+        }
+      }
+      else {
+        $file = $variables_array['%file'];
+      }
+      $line = $variables_array['%line'];
+      $severity = $variables_array['severity_level'];
+
+      $output_message = "$type: $message in $function_name (line $line of $file) Severity: $severity";
+      return $output_message;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Renders the file path from supplied serilized data.
+ */
+function grouper_render_path($variables, $shorten_path = FALSE) {
+
+  $variables_array = unserialize($variables);
+
+  if ($shorten_path) {
+    $start_pos = stripos($variables_array['%file'], '/code/');
+    if ($start_pos !== FALSE) {
+      $file = '...' . substr($variables_array['%file'], $start_pos);
+    }
+    else {
+      $file = $variables_array['%file'];
+    }
+  }
+  else {
+    $file = $variables_array['%file'];
+  }
+
+  return $file;
+}
+
+/**
+ * Renders the Grouper Menu Links and style.
+ */
+function grouper_emit_menu($active) {
+
+  switch ($active) {
+    case '/admin/grouper/':
+      $c1 = "class='active'";
+      break;
+
+    case '/admin/grouper/sorted/':
+      $c2 = "class='active'";
+      break;
+
+    case '/admin/grouper/pages/':
+      $c3 = "class='active'";
+      break;
+
+    case '/admin/grouper/distribution/':
+      $c4 = "class='active'";
+      break;
+
+    case '/access-denied/':
+      $c5 = "class='active'";
+      break;
+
+    case '/page-not-found/':
+      $c6 = "class='active'";
+      break;
+
+    case '/menu-links/':
+      $c7 = "class='active'";
+      break;
+
+    case '/admin/reports/dblog/':
+      $c8 = "class='active'";
+      break;
+
+  }
+
+  $markup = "
+    <table id=\"grouper-menu\" style=\"width:100%\">
+      <tr>
+        <td $c1><a href=\"/admin/grouper/\"><b>Groups of PHP Errors</b></a></td>
+        <td $c2><a href=\"/admin/grouper/sorted/\"><b>Sorted PHP Errors</b></a></td>
+        <td $c3><a href=\"/admin/grouper/pages/\"><b>Pages With Errors</b></a></td>
+        <td $c4><a href=\"/admin/grouper/distribution/\"><b>Error Distribution</b></a></td>
+        <td $c5><a href=\"/admin/grouper/access-denied/\"><b>Access Denied</b></a></td>
+        <td $c6><a href=\"/admin/grouper/page-not-found\"><b>Not Found</b></a></td>
+        <td $c7><a href=\"/admin/grouper/menu-links/\"><b>Menu Links</b></a></td>
+        <td $c8><a href=\"/admin/reports/dblog/\"><b>Drupal DB Log</b></a></td>
+      </tr>
+   </table>
+    ";
+
+  return $markup;
+}
+
+/**
+ * Renders the Grouper Exerciser Button and Description.
+ */
+function grouper_emit_exerciser() {
+  return '<div id="exerciser">
+            <a id="exercise-pages" href="#">Start Exercising These Pages</a>
+            <br />
+
+            <div id="exerciser-message">
+              <div><b>This could take a while.</b></div>
+              Open Your Browsers Javascript Console <b>Before</b> Starting.<br /><br />
+              Chrome Mac [Cmd] + [option] + [J]<br />
+              Chrome Windows [Ctrl] + [shift] + [J]<br />
+
+              Firefox Mac [Cmd] + [option] + [K]<br />
+              Firefox Windows [Ctrl] + [shift] + [K]<br />
+
+              Safari  Mac [Cmd] + [option] + [C]<br />
+            </div>
+            <div id="exercise-status">The status of the final page will be displayed here when the Exercising is complete.</div>
+         </div>
+         <br />
+          ';
+}
+
+/**
+ * Returns an array of menu links.
+ */
+function grouper_get_menu_links() {
+  $paths_arr = array();
+
+  $loaded = module_load_include('inc', 'grouper', 'grouper.menu_token_plugin');
+
+  // Get the list of menus.
+  $menus_arr = menu_get_menus(FALSE);
+
+  foreach ($menus_arr as $menu_machine_name => $menu_name) {
+    // Add a menu title.
+    $menu_data_arr = menu_load_links($menu_machine_name);
+    if (count($menu_data_arr) > 0) {
+      $paths_arr['grouper-' . $menu_machine_name] = $menu_name;
+    }
+
+    // Get the list of links.
+    foreach ($menu_data_arr as $menu_data) {
+      if (isset($menu_data['options']['menu_token_link_path'])) {
+        if ($loaded !== FALSE) {
+          $menu_token_link_path = grouper_resolve_menu_token_link_path($menu_data['options']['menu_token_link_path']);
+
+          if ($menu_token_link_path !== FALSE) {
+            $paths_arr[$menu_token_link_path] = $menu_data['link_title'];
+          }
+        }
+        $paths_arr[$menu_data['options']['menu_token_link_path']] = 'Could Not Resolve Token | ' . $menu_data['options']['menu_token_link_path'];
+      }
+      else {
+        $paths_arr[$menu_data['link_path']] = $menu_data['link_title'];
+      }
+
+    }
+
+  }
+
+  return $paths_arr;
+
+}
+
+/**
+ * Forms a reproducer link and inserts domain if desired.
+ */
+function grouper_render_link($link) {
+  $grouper_uri = variable_get('grouper_uri', '');
+  if (empty($grouper_uri)) {
+    return '<a href="' . $link . '" target="_blank" style="color: black;">' . $link . '</a>';
+  }
+  else {
+    $url_array = parse_url($link);
+
+    if (isset($url_array['query']) && !empty($url_array['query']) && isset($url_array['fragment']) && !empty($url_array['fragment'])) {
+      $output_url = $grouper_uri . $url_array['path'] . '?' . $url_array['query'] . '#' . $url_array['fragment'];
+    }
+    elseif (isset($url_array['query']) && !empty($url_array['query'])) {
+      $output_url = $grouper_uri . $url_array['path'] . '?' . $url_array['query'];
+    }
+    else {
+      $output_url = $grouper_uri . $url_array['path'];
+    }
+    return '<a href="' . $output_url . '" target="_blank" style="color: black;">' . $output_url . '</a>';
+  }
+
+}
+
+/**
+ * Forms a reproducer link and inserts domain if desired.
+ */
+function grouper_render_location($link) {
+
+  $grouper_uri = variable_get('grouper_uri', '');
+  if (empty($grouper_uri)) {
+    return $link;
+  }
+  else {
+    $url_array = parse_url($link);
+
+    if (isset($url_array['query']) && !empty($url_array['query']) && isset($url_array['fragment']) && !empty($url_array['fragment'])) {
+      return $grouper_uri . $url_array['path'] . '?' . $url_array['query'] . '#' . $url_array['fragment'];
+    }
+    elseif (isset($url_array['query']) && !empty($url_array['query'])) {
+      return $grouper_uri . $url_array['path'] . '?' . $url_array['query'];
+    }
+    else {
+      return $grouper_uri . $url_array['path'];
+    }
+  }
+
+}

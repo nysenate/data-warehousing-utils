@@ -1,0 +1,9 @@
+name = Grouper - Error Reporting
+description = Shows the Error Distribution.
+
+stylesheets[all][] = grouper.css
+scripts[] = grouper.js
+
+package = DB LOG TOOLS
+version = "7.x-1.0"
+core = 7.x
