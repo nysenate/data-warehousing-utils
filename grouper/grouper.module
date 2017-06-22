@@ -186,6 +186,8 @@ function grouper_summary_page() {
   foreach ($unique_variables_array as $key => $variable) {
 
     $link_loc = '/admin/grouper/detail/?err=' . urlencode($variables_array[$key]);
+//    $link_loc = 'admin/grouper/warnings/?err=' . urlencode($variables_array[$key]) . '&page=' . urlencode($locations_array[$key]);
+//    $link_loc = '/admin/grouper/warnings/?page=' . urlencode($locations_array[$key]) . '&err=' . $variables_array[$key];
 
     $link_markup = "<a href='$link_loc' target='_blank'>$rendered_variables_array[$key]</a>";
 
@@ -195,7 +197,7 @@ function grouper_summary_page() {
     $rows[] = array($num_pages_array[$key], $link_markup, $action_markup);
   }
 
-  return grouper_emit_menu('/admin/grouper/') . theme('table', array('header' => $header, 'rows' => $rows)) . count($rows) . ' | uva= ' . count($unique_variables_array) . ' | va= ' . count($variables_array);
+  return grouper_emit_menu('/admin/grouper/') . theme('table', array('header' => $header, 'rows' => $rows));
 }
 
 /**
@@ -603,6 +605,15 @@ function grouper_render_path($variables, $shorten_path = FALSE) {
  * Renders the Grouper Menu Links and style.
  */
 function grouper_emit_menu($active) {
+
+  $c1 = '';
+  $c2 = '';
+  $c3 = '';
+  $c4 = '';
+  $c5 = '';
+  $c6 = '';
+  $c7 = '';
+  $c8 = '';
 
   switch ($active) {
     case '/admin/grouper/':
