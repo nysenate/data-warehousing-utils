@@ -186,8 +186,6 @@ function grouper_summary_page() {
   foreach ($unique_variables_array as $key => $variable) {
 
     $link_loc = '/admin/grouper/detail/?err=' . urlencode($variables_array[$key]);
-//    $link_loc = 'admin/grouper/warnings/?err=' . urlencode($variables_array[$key]) . '&page=' . urlencode($locations_array[$key]);
-//    $link_loc = '/admin/grouper/warnings/?page=' . urlencode($locations_array[$key]) . '&err=' . $variables_array[$key];
 
     $link_markup = "<a href='$link_loc' target='_blank'>$rendered_variables_array[$key]</a>";
 
@@ -425,7 +423,7 @@ function grouper_errors_page() {
     $page_raw = $_GET['page'];
     $location = urldecode($page_raw);
 
-    $query = "SELECT * FROM `watchdog` WHERE `type` = 'php' AND `location` = :location LIMIT 100";
+    $query = "SELECT DISTINCT `variables` FROM `watchdog` WHERE `type` = 'php' AND `location` = :location";
 
     $result = db_query($query, array(':location' => $location));
 
@@ -434,7 +432,7 @@ function grouper_errors_page() {
 
     foreach ($result as $record) {
       $link_loc = '/admin/grouper/detail/?err=' . urlencode($record->variables);
-      $link_name = grouper_render_dblog_message($record->variables, TRUE);
+      $link_name = grouper_render_dblog_message($record->variables, FALSE);
       $rows[] = array("<a href='$link_loc' target='_blank'>$link_name</a>");
     }
 
@@ -448,14 +446,14 @@ function grouper_errors_page() {
  */
 function grouper_distribution() {
 
-  $query = "SELECT COUNT(`location`) AS `num_pages`, `type` FROM `watchdog` GROUP BY `type`";
+  $query = "SELECT COUNT(`location`) AS `num_pages`, `type` , (COUNT(`location`) * 100 / (SELECT COUNT(*) FROM `watchdog`)) as `percentage` FROM `watchdog` GROUP BY `type` ORDER BY `num_pages` DESC";
   $result = db_query($query);
 
-  $header = array('Number of Pages', 'Type of Message');
+  $header = array('Number of Pages', 'Type of Message', 'Percentage');
   $rows = array();
 
   foreach ($result as $record) {
-    $rows[] = array($record->num_pages, $record->type);
+    $rows[] = array($record->num_pages, $record->type, $record->percentage . ' %');
   }
 
   return grouper_emit_menu('/admin/grouper/distribution/') . theme('table', array('header' => $header, 'rows' => $rows));
@@ -469,13 +467,14 @@ function grouper_access_denied() {
   drupal_add_js(drupal_get_path('module', 'grouper') . '/grouper.js');
 
   $query = "SELECT `location`, `timestamp` FROM `watchdog` WHERE `type` = 'access denied' ORDER BY `timestamp` DESC";
+  $query = "SELECT COUNT(`wid`) AS `num_pages`, `location`, `timestamp` FROM `watchdog` WHERE `type` = 'access denied' GROUP BY `location` ORDER BY `num_pages` DESC";
   $result = db_query($query);
 
-  $header = array('Pages');
+  $header = array('Quantity', 'Page');
   $rows = array();
 
   foreach ($result as $record) {
-    $rows[] = array("<a class='access-denied' href='$record->location' target='_blank'>$record->location</a>");
+    $rows[] = array($record->num_pages, "<a class='access-denied' href='$record->location' target='_blank'>$record->location</a>");
   }
 
   return grouper_emit_menu('/access-denied/') . grouper_emit_exerciser() . theme('table', array('header' => $header, 'rows' => $rows));
@@ -486,14 +485,14 @@ function grouper_access_denied() {
  */
 function grouper_pages_not_found() {
 
-  $query = "SELECT `location`, `timestamp` FROM `watchdog` WHERE `type` = 'page not found' ORDER BY `timestamp` DESC";
+  $query = "SELECT COUNT(`wid`) AS `num_pages`, `location`, `timestamp` FROM `watchdog` WHERE `type` = 'page not found' GROUP BY `location` ORDER BY `num_pages` DESC";
   $result = db_query($query);
 
-  $header = array('Pages');
+  $header = array('Quantity', 'Page');
   $rows = array();
 
   foreach ($result as $record) {
-    $rows[] = array("<a class='page-not-found' href='$record->location' target='_blank'>$record->location</a>");
+    $rows[] = array($record->num_pages, "<a class='page-not-found' href='$record->location' target='_blank'>$record->location</a>");
   }
 
   return grouper_emit_menu('/page-not-found/') . theme('table', array('header' => $header, 'rows' => $rows));
