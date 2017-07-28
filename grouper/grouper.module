@@ -257,7 +257,7 @@ function grouper_detail_page() {
     $error_raw = $_GET['err'];
     $error = urldecode($error_raw);
 
-    $query = "SELECT  COUNT(`location`) AS `num_pages`, `location`, `wid` FROM `watchdog` WHERE `variables` = :variables GROUP BY `variables` ORDER BY `num_pages` DESC;";
+    $query = "SELECT  COUNT(`location`) AS `num_pages`, `location`, `wid` FROM `watchdog` WHERE `variables` = :variables GROUP BY `location` ORDER BY `num_pages` DESC;";
 
     $result = db_query($query, array(':variables' => $error));
 

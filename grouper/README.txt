@@ -200,3 +200,5 @@ Delete grouper uri.
 ---------------------------------------------------------------
 
 Created by Seth Snyder for Drupal 7
+
+SELECT COUNT(*) FROM `watchdog`;
