@@ -189,7 +189,7 @@ function grouper_summary_page() {
 
     $link_markup = "<a href='$link_loc' target='_blank'>$rendered_variables_array[$key]</a>";
 
-    $action_markup = '<a href="' . $locations_array[$key] . '" title="' . grouper_render_location($locations_array[$key]) . '" target="_blank" class="page-link"><b>L</b></a> &nbsp;' .
+    $action_markup = '<a href="' . grouper_render_location($locations_array[$key]) . '" title="' . grouper_render_location($locations_array[$key]) . '" target="_blank" class="page-link"><b>L</b></a> &nbsp;' .
                      '<input type="radio" value="0" location="' . grouper_render_location($locations_array[$key]) . '" class="repro-button" title="Reproduce and show messages" />';
 
     $rows[] = array($num_pages_array[$key], $link_markup, $action_markup);
@@ -236,7 +236,7 @@ function grouper_sorted_summary_page() {
       $link_markup = "<a href='$link_loc' target='_blank'>$rendered_variables_array[$key]</a>" .
                      "<br />&nbsp; &nbsp; &nbsp;" . grouper_render_link($locations_array[$key]);
 
-      $action_markup = '<a href="' . $locations_array[$key] . '" title="' . grouper_render_location($locations_array[$key]) . '" target="_blank" class="page-link"><b>L</b></a> &nbsp;' .
+      $action_markup = '<a href="' . grouper_render_location($locations_array[$key]) . '" title="' . grouper_render_location($locations_array[$key]) . '" target="_blank" class="page-link"><b>L</b></a> &nbsp;' .
                        '<input type="radio" value="0" location="' . grouper_render_location($locations_array[$key]) . '" class="repro-button" title="Reproduce and show messages" />';
 
       $rows[] = array($num_pages_array[$key], $link_markup, $action_markup);
