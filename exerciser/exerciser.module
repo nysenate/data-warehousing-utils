@@ -1,0 +1,877 @@
+<?php
+
+/**
+ * @file
+ * File exerciser.module.
+ */
+
+// names of variables
+define("EXERCISE_RUN_TYPE", "exerciser_run_type");
+define("EXERCISE_RUN", "exerciser_run");
+define("EXERCISE_RUN_SIZE", "exerciser_run_size");
+define("EXERCISE_RUN_CURRENT_POSITION", "exerciser_run_current_position");
+define("EXERCISE_RUN_CURRENT_ID", "exerciser_run_current_id");
+define("EXERCISE_RUN_CURRENT_TIMESTAMP", "exerciser_run_current_timestamp");
+define("EXERCISE_RUN_PREVIOUS", "exerciser_run_previous");
+define("EXERCISE_ALL_STOP", "exerciser_all_stop");
+define("EXERCISE_DRUSH_ALIAS", "exerciser_drush_alias");
+
+/**
+ * Implementation of ArrayAccess
+ */
+function exerciser_access($arg) {
+  return TRUE;
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function exerciser_menu() {
+  $items = array();
+
+  $items['exercise-monitor'] = array(
+    'title' => 'Exercise Monitor',
+    'description' => 'Home',
+    'access arguments' => array('access content'),
+    'access callback'  => 'exerciser_access',
+    'page arguments' => array(2),
+    'page callback' => 'exerciser_monitor_page',
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'exerciser.monitor.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Code for drush exercise_nodes - exns.
+ *
+ * Surveys the Bill aliases and stores them in table.
+ */
+function exerciser_exercise_nodes($arg1) {
+  $valid_content_type = '';
+  $all_stop = FALSE;
+  $uri = '';
+
+  // Determine if a foriegn url from an `alias` option will be used.
+  $drush_alias = drush_get_option('alias', '');
+  if (!empty($drush_alias)) {
+    $uri = exerciser_get_uri($drush_alias);
+  }
+
+  // Determine if a foriegn url from an `uri` option will be used.
+  if (empty($uri)) {
+    // If a uri is provided test a different server.
+    $uri = drush_get_option('uri', '');
+  }
+
+  $starting_nid = variable_get(EXERCISE_RUN_CURRENT_ID, 0);
+
+  //--------------------------------------------------
+      // Before the query see if a remote database is specified.
+      $connection_arr = exerciser_mysql_url_connect();
+      if ($connection_arr !== FALSE) {
+        print "remote URI specified: \r\n";
+        print_r($connection_arr);
+        print "\r\n";
+        Database::addConnectionInfo('exerciser', 'default', $connection_arr);
+        db_set_active('exerciser');
+        //Database::addConnectionInfo('external_db', 'default', $connection_arr);
+        //db_set_active('external_db');
+      }
+  //------------------------------------------------------------------------------------
+
+  // Get an array of content types.
+  $content_types_arr = node_type_get_types();
+  $valid_content_type = $arg1;
+
+  if (empty($valid_content_type)) {
+    // Present a list of options.
+    $options_arr = array();
+    foreach ($content_types_arr as $index => $ct_object) {
+      $options_arr[$index] = $ct_object->name;
+    }
+
+    $choice = drush_choice($options_arr, dt('What Content Type Would You Like ?'));
+    if ($choice !== 0) {
+      $valid_content_type = $choice;
+    }
+  }
+
+  if (!empty($valid_content_type)) {
+    // Begin test run.
+    print " +--------------------------------------------------------------+\r\n";
+    //print " | type \t| nid \t\t| php \t| perm \t| solr  | total |\r\n";
+    print " |                             Results                          |\r\n";
+    print " +--------------------------------------------------------------+\r\n";
+
+    // OBJECT - $result = db_query("SELECT `nid` FROM `node` WHERE `type` = :type AND `nid` > :starting_nid ORDER BY `nid` ASC", array(':type' => $valid_content_type, ':starting_nid' => $starting_nid));
+    $result = db_query("SELECT `nid` FROM `node` WHERE `type` = :type AND `nid` > :starting_nid ORDER BY `nid` ASC", array(':type' => $valid_content_type, ':starting_nid' => $starting_nid))->fetchCol();
+
+    //------------------------------------------------------------------------------------
+    // After the query set back to the default db.
+    if ($connection_arr !== FALSE) {
+      // set back to the default db.
+      db_set_active();
+    }
+    //--------------------------------------------------
+
+    // Setup the run.
+    $message = "Started `$valid_content_type` run - " . date('m/d/Y H:i:s', time());
+    watchdog('Exerciser', $message, array(), WATCHDOG_INFO);
+    variable_set(EXERCISE_RUN_TYPE, 'node');
+    variable_set(EXERCISE_RUN, $valid_content_type);
+    $current_row_number = 0;
+
+    // OBJECT - variable_set(EXERCISE_RUN_SIZE, $result->rowCount());
+    variable_set(EXERCISE_RUN_SIZE, count($result));
+    $quietly = drush_get_option('quietly', FALSE);
+    foreach ($result as $record) {
+      $current_row_number++;
+      // OBJECT - $nid = $record->nid;
+      $nid = $record;
+      exerciser_exercise_node($valid_content_type, $quietly, $nid, $current_row_number, $uri);
+
+      variable_set(EXERCISE_RUN_CURRENT_POSITION, $current_row_number);
+      variable_set(EXERCISE_RUN_CURRENT_ID, $nid);
+      variable_set(EXERCISE_RUN_CURRENT_TIMESTAMP, time());
+
+      //$all_stop = variable_get(EXERCISE_ALL_STOP, FALSE);
+      $all_stop = db_query("SELECT COUNT(*) FROM `variable` WHERE `name` = 'exerciser_all_stop'")->fetchField();
+      if ($all_stop == TRUE) {
+        break;
+      }
+    }
+
+    print " +--------------------------------------------------------------+\r\n";
+
+    if ($all_stop == TRUE) {
+      $message = "Stopped `$valid_content_type` run - " . date('m/d/Y H:i:s', time());
+      print "$message\r\n";
+    }
+    else {
+  	  // End test run.
+      $message = "Ended `$valid_content_type` run - " . date('m/d/Y H:i:s', time());
+      watchdog('Exerciser', $message, array(), WATCHDOG_INFO);
+      variable_set(EXERCISE_RUN_TYPE, '');
+      variable_set(EXERCISE_RUN, '');
+      variable_set(EXERCISE_RUN_SIZE, '');
+      variable_set(EXERCISE_RUN_CURRENT_POSITION, '');
+      variable_set(EXERCISE_RUN_CURRENT_ID, 0);
+      variable_set(EXERCISE_RUN_CURRENT_TIMESTAMP, '');
+      variable_set(EXERCISE_RUN_PREVIOUS, $valid_content_type);
+      variable_del(EXERCISE_ALL_STOP);
+    }
+  }
+
+}
+
+/**
+ *  Code for drush exercise-node - exn.
+ *
+ * Renders a node to no where and records it.
+ */
+function exerciser_exercise_node($type, $quietly, $nid, $current_row_number, $uri = '') {
+
+  if (empty($uri)) {
+    // No uri was specified. The default.
+    $rendered = exerciser_load_page($nid);//OK
+    $debugging = drush_get_option('debugging', '');
+    if (!empty($debugging)) {
+      print "\r\n DOING exerciser_load_page($nid)\r\nn";
+    }
+  }
+  else {
+    // A uri was specified.
+    $rendered = exerciser_do_curl($uri . '/node/' . $nid);// foreign
+    $debugging = drush_get_option('debugging', '');
+    if (!empty($debugging)) {
+      print "\r\n DOING exerciser_do_curl($uri . '/node/' . $nid)\r\n";
+    }
+  }
+
+  // The size of the returned page.
+  $size = strlen($rendered);
+
+  // Wether the node tag exists or not.
+  $validated = (exerciser_is_node_page($rendered, $nid) ? 1 : 0);
+
+  // Record the results.
+  exerciser_insert_row($nid, $size, $validated);
+
+  if (!$validated) {
+    print "NID $nid WAS NOT VALIDATED.  SIZE = $size\r\n";
+  }
+
+  $showall = drush_get_option('showall', '');
+
+  // Emit status info.
+  if (empty($showall)) {
+    $remainder = $current_row_number % 100;
+    if ($remainder == 0) {
+      print "$type - $current_row_number" . '/' . variable_get(EXERCISE_RUN_SIZE, '') . "\r\n";
+    }
+  }
+  else {
+      print " | $type \t| $nid \t| $size \t| $validated \t| $current_row_number \t| \t|\r\n";
+  }
+
+}
+
+/**
+ * Code for drush exercise-terms - exts.
+ *
+ * Surveys the Bill aliases and stores them in table.
+ */
+function exerciser_exercise_terms($arg1) {
+
+  $valid_vocabulary_name = '';
+  $valid_vocabulary_vid = '';
+
+  $status = exerciser_exercise_get_status($arg1);
+  if ($status != 'ready') {
+    print "Status not ready - $status.\r\n";
+    print "Run the exercise-stop to stop previous runs and try again.\r\n";
+    return;
+  }
+
+  // See if a vocabulary name is supplied.
+
+  if (!empty($arg1)) {
+    $vocabulary = taxonomy_vocabulary_machine_name_load($arg1);
+    if ($vocabulary !== FALSE) {
+      $valid_vocabulary_name = $vocabulary->machine_name;
+      $valid_vocabulary_vid = $vocabulary->vid;
+    }
+  }
+
+  if (empty($valid_vocabulary_name)) {
+
+    // Get an array of content types;
+    $vocabulary_arr = taxonomy_get_vocabularies();
+
+    // Present a list of options.
+    $options_arr = array();
+    foreach ($vocabulary_arr as $index => $ct_object) {
+      $options_arr[$index] = $ct_object->machine_name;
+    }
+
+    $choice = drush_choice($options_arr, dt('What Vocabulary Would You Like ?'));
+    if ($choice !== 0) {
+      $valid_vocabulary_name = $options_arr[$choice];
+      $vocabulary = taxonomy_vocabulary_machine_name_load($valid_vocabulary_name);
+      $valid_vocabulary_vid = $vocabulary->vid;
+    }
+  }
+
+  if (!empty($valid_vocabulary_name)) {
+    // Begin test run.
+    $message = "Started `$valid_vocabulary_name` run - " . date('m/d/Y H:i:s', time());
+    watchdog('Exerciser', $message, array(), WATCHDOG_INFO);
+    variable_set(EXERCISE_RUN_TYPE, 'term');
+    variable_set(EXERCISE_RUN, $valid_vocabulary_name);
+    $current_row_number = 0;
+
+    $continue = drush_get_option('continue', FALSE);
+    $flush = drush_get_option('flush', FALSE);
+    $quietly = drush_get_option('quietly', FALSE);
+
+  	if ($continue != FALSE || $flush == TRUE) {
+  	  db_truncate('exercise')->execute();;
+  	}
+
+    $verbose = drush_get_option('db', FALSE);
+
+    print " +--------------------------------------------------------------+\r\n";
+    print " | type \t| tid \t\t| php \t| perm \t| solr  | total |\r\n";
+    print " +--------------------------------------------------------------+\r\n";
+
+    $result = db_query("SELECT `tid` FROM `taxonomy_term_data` WHERE `vid`= :vid", array(':vid' => $valid_vocabulary_vid));
+    variable_set(EXERCISE_RUN_SIZE, $result->rowCount());
+    foreach ($result as $record) {
+      $current_row_number++;
+      $result = exerciser_exercise_term('TERM', FALSE, $record->tid);
+
+      if ($verbose) {
+        print " | $valid_vocabulary_name \t| $record->tid \t| " . strlen($result) . "\t|\r\n";
+      }
+      else {
+        print "term - $valid_vocabulary_name - $current_row_number" . '/' . variable_get(EXERCISE_RUN_SIZE, '') . "\r\n";
+      }
+
+
+      //print exerciser_exercise_term('TERM', FALSE, $record->tid);
+      variable_set(EXERCISE_RUN_CURRENT_POSITION, $current_row_number);
+      variable_set(EXERCISE_RUN_CURRENT_ID, $record->tid);
+      variable_set(EXERCISE_RUN_CURRENT_TIMESTAMP, time());
+
+      $all_stop = db_query("SELECT COUNT(*) FROM `variable` WHERE `name` = 'exerciser_all_stop'")->fetchField();
+      //$all_stop = variable_get(EXERCISE_ALL_STOP, FALSE);
+      if ($all_stop == TRUE) {
+        break;
+      }
+    }
+
+    print " +--------------------------------------------------------------+\r\n";
+
+    // End test run.
+    $message = "Ended `$valid_vocabulary_name` run - " . date('m/d/Y H:i:s', time());
+    watchdog('Exerciser', $message, array(), WATCHDOG_INFO);
+    variable_set(EXERCISE_RUN_TYPE, '');
+    variable_set(EXERCISE_RUN, '');
+    variable_set(EXERCISE_RUN_SIZE, '');
+    variable_set(EXERCISE_RUN_CURRENT_POSITION, '');
+    variable_set(EXERCISE_RUN_CURRENT_ID, '');
+    variable_set(EXERCISE_RUN_CURRENT_TIMESTAMP, '');
+    variable_set(EXERCISE_RUN_PREVIOUS, $valid_vocabulary_name);
+    variable_del(EXERCISE_ALL_STOP);
+  }
+
+}
+
+/**
+ * Code for drush exercise-term -  ext.
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_term($valid_content_type, $quietly, $tid) {
+  return exerciser_load_taxonomy_page($tid);
+}
+
+/**
+ * Code for drush exercise-status est
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_status($arg1) {
+  print exerciser_exercise_get_status($arg1);
+}
+
+/**
+ * Helper function for exerciser_exercise_status().
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_get_status() {
+
+  $exercise_run_type = variable_get(EXERCISE_RUN_TYPE, '');
+  $exercise_run = variable_get(EXERCISE_RUN, '');
+  $exercise_run_size = variable_get(EXERCISE_RUN_SIZE, '');
+  $exercise_run_current_position = variable_get(EXERCISE_RUN_CURRENT_POSITION, '');
+  $exercise_run_current_id = variable_get(EXERCISE_RUN_CURRENT_ID, '');
+  $exercise_run_current_timestamp = (int)variable_get(EXERCISE_RUN_CURRENT_TIMESTAMP, '');
+  $exercise_run_current_time = date('m/d/Y H:i:s', (int)$exercise_run_current_timestamp);
+
+  $current_time = time();
+
+  if (!empty($exercise_run_type) &&
+      !empty($exercise_run) &&
+      !empty($exercise_run_size) &&
+      !empty($exercise_run_current_position) &&
+      !empty($exercise_run_current_id) &&
+      $exercise_run_current_timestamp > 0 &&
+      ($current_time - $exercise_run_current_timestamp) < 30 ) {
+
+    return 'running-' . $exercise_run;
+
+  }
+  elseif (!empty($exercise_run_type) &&
+          !empty($exercise_run) &&
+          !empty($exercise_run_size) &&
+          !empty($exercise_run_current_position) &&
+          !empty($exercise_run_current_id) &&
+          $exercise_run_current_timestamp > 0 &&
+          ($current_time - $exercise_run_current_timestamp) > 30 ) {
+
+    return 'stopped-' . $exercise_run;
+
+  }
+  elseif (empty($exercise_run_type) &&
+          empty($exercise_run) &&
+          empty($exercise_run_size) &&
+          !empty($exercise_run_current_position) &&
+          !empty($exercise_run_current_id) &&
+          ($current_time - $exercise_run_current_timestamp) < 30 ) {
+
+    $node_type = db_query("SELECT `type` FROM `node` WHERE `nid` = :nid", array(":nid" => $exercise_run_current_id))->fetchField();
+    $node_count = db_query("SELECT COUNT(*) FROM `node` WHERE `type` = :type", array(":type" => $node_type))->fetchField();
+    return 'running-orphan-' . $node_type . '-' . $exercise_run_current_position . '/' . $node_count;
+
+  }
+  elseif (empty($exercise_run_type) &&
+          empty($exercise_run) &&
+          empty($exercise_run_size) &&
+          empty($exercise_run_current_position) &&
+          empty($exercise_run_current_id) &&
+          ( empty($exercise_run_current_timestamp) || $exercise_run_current_timestamp == 0) ) {
+
+    return 'ready';
+
+  }
+
+  return 'ready';
+}
+
+/**
+ * Code for drush exercise-status - estp.
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_stop($arg1) {
+  variable_set(EXERCISE_ALL_STOP, TRUE);
+
+  sleep(10);
+
+  variable_del(EXERCISE_ALL_STOP);
+
+  $full = drush_get_option('full', FALSE);
+  if ($full == TRUE) {
+    variable_set(EXERCISE_RUN_TYPE, '');
+    variable_set(EXERCISE_RUN, '');
+    variable_set(EXERCISE_RUN_SIZE, '');
+    variable_set(EXERCISE_RUN_CURRENT_POSITION, '');
+    variable_set(EXERCISE_RUN_CURRENT_ID, '');
+    variable_set(EXERCISE_RUN_CURRENT_TIMESTAMP, '');
+    variable_set(EXERCISE_RUN_PREVIOUS, '');
+  }
+
+}
+
+/**
+ * Code for drush exercise-status-ping - esp.
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_status_ping($arg1) {
+
+  if (isset($arg1) && is_numeric($arg1) && $arg1 > 0 && $arg1 <= 3600) {
+    $delay = $arg1;
+  }
+  else {
+    $delay = 0;
+  }
+
+  do {
+
+    $exercise_run_type = unserialize(db_query("SELECT `value` FROM `variable` WHERE `name` = :name", array(":name" => EXERCISE_RUN_TYPE))->fetchField());
+    $exercise_run = unserialize(db_query("SELECT `value` FROM `variable` WHERE `name` = :name", array(":name" => EXERCISE_RUN))->fetchField());
+    $exercise_run_size = unserialize(db_query("SELECT `value` FROM `variable` WHERE `name` = :name", array(":name" => EXERCISE_RUN_SIZE))->fetchField());
+    $exercise_run_current_position = unserialize(db_query("SELECT `value` FROM `variable` WHERE `name` = :name", array(":name" => EXERCISE_RUN_CURRENT_POSITION))->fetchField());
+    $exercise_run_current_id = unserialize(db_query("SELECT `value` FROM `variable` WHERE `name` = :name", array(":name" => EXERCISE_RUN_CURRENT_ID))->fetchField());
+    $exercise_run_current_timestamp = unserialize(db_query("SELECT `value` FROM `variable` WHERE `name` = :name", array(":name" => EXERCISE_RUN_CURRENT_TIMESTAMP))->fetchField());
+    $exercise_run_current_time = date('m/d/Y H:i:s', (int)$exercise_run_current_timestamp);
+
+
+    print "\r\n";
+    print " +------------------------------------------------------+\r\n";
+    print " | Status                                               |\r\n";
+    print " +------------------------------------------------------+\r\n";
+    print " |  run_type \t\t\t| $exercise_run_type \t\t\t|\r\n";
+    print " |  run \t\t\t| $exercise_run \t\t\t|\r\n";
+    print " |  run_current_position \t| $exercise_run_current_position \t\t|\r\n";
+    print " |  run_size \t\t\t| $exercise_run_size \t\t|\r\n";
+    print " |  run_current_id \t\t| $exercise_run_current_id \t\t\t|\r\n";
+    print " |  run_current_timestamp \t| $exercise_run_current_time \t|\r\n";
+    print " +------------------------------------------------------+\r\n";
+    print "\r\n";
+
+    sleep($delay);
+
+  } while ($delay > 0);
+
+}
+
+
+/**
+ * Code for drush exercise-all - exa.
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_all($arg1) {
+
+  if (!empty($arg1) && substr($arg1, 0, 1) != '@') {
+    print "The supplied drush alias should begin with an @\r\n";
+    return;
+  }
+
+  // Print drush shebang
+  print "#!/usr/bin/env drush\r\n\r\n";
+  // OR #!/full/path/to/drush
+
+  $content_types_arr = node_type_get_types();
+  sort($content_types_arr);
+  foreach ($content_types_arr as $index => $ct_object) {
+    print "drush $arg1 exercise-nodes $ct_object->type\r\n";
+  }
+
+  $vocabulary_arr = taxonomy_get_vocabularies();
+  foreach ($vocabulary_arr as $index => $ct_object) {
+    print "drush $arg1 exercise-terms $ct_object->machine_name\r\n";
+  }
+
+  if (!empty($arg1)) {
+    variable_set(EXERCISE_DRUSH_ALIAS, $arg1);
+  }
+
+}
+
+
+/**
+ * Code for drush exercise-get-last-complete-run - exlcr.
+ *
+ * Simple status as to running or ready returns taxonomy, type or ready.
+ */
+function exerciser_exercise_get_last_complete_run($arg1) {
+  print variable_get(EXERCISE_RUN_PREVIOUS, '');
+}
+
+
+/**
+ * Code for Drush exercise-get-next-run - exgnr.
+ *
+ * This function siomly returns not-ready if a run is running OR.
+ * It returns the name of the next run to perform if a run is complete.
+ * After the last run it returns nothing because its done.
+ */
+function exerciser_exercise_get_next_run($arg1) {
+
+  $return_first_term = FALSE;
+  $command = drush_get_option('command', FALSE);
+
+  $status = exerciser_exercise_get_status($arg1);
+  if ($status != 'ready') {
+    print "Status not ready - $status.\r\n";
+    return;
+  }
+
+  $last_complete_run = variable_get(EXERCISE_RUN_PREVIOUS, '');
+
+  if (empty($arg1) || substr($arg1, 0, 1) != '@') {
+    $arg1 = variable_get(EXERCISE_DRUSH_ALIAS, '');
+  }
+
+  if (empty($arg1) || substr($arg1, 0, 1) != '@') {
+    $arg1 = '';
+  }
+
+  $content_types_arr = node_type_get_types();
+  $number_of_content_types = count($content_types_arr);
+  sort($content_types_arr);
+  foreach ($content_types_arr as $index => $ct_object) {
+
+    if ($ct_object->type == $last_complete_run) {
+       if ($index < ($number_of_content_types - 1)) {
+         if ($command) {
+           print "drush $arg1 exercise-nodes " . $content_types_arr[$index + 1]->type;
+         }
+         else {
+           print $content_types_arr[$index + 1]->type;
+         }
+         return;
+       }
+       if (($index = ($number_of_content_types - 1))) {
+         $return_first_term = TRUE;
+       }
+    }
+  }
+
+  $vocabulary_arr = taxonomy_get_vocabularies();
+
+  if ( $return_first_term == TRUE) {
+    $vocabulary_name = current($vocabulary_arr)->machine_name;
+    if ($command) {
+      print "drush $arg1 exercise-terms $vocabulary_name";
+    }
+    else {
+      print $vocabulary_name;
+    }
+  }
+  else {
+    $firstElementName = current($vocabulary_arr)->machine_name;
+
+    foreach ($vocabulary_arr as $index => $ct_object) {
+      if ($ct_object->machine_name == $last_complete_run) {
+        $current_ct_object = current($vocabulary_arr);
+
+        if ($current_ct_object->machine_name == $firstElementName) {
+          print "done";
+          return;
+        }
+        else {
+          $vocabulary_name = current($vocabulary_arr)->machine_name;
+          if ($command) {
+            print "drush $arg1 exercise-terms " . $vocabulary_name;
+          }
+          else {
+            print $vocabulary_name;
+          }
+        }
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Drush exercise_node - exn.
+ *
+ * Exercises a Single node.
+ */
+function exerciser_exercise_node_drush($arg1) {
+
+  print " +--------------------------------------------------------------+\r\n";
+  print " | size \t| nid \t\t| php \t| perm \t| solr  | total |\r\n";
+  print " +--------------------------------------------------------------+\r\n";
+  exerciser_exercise_node('SINGLE', FALSE, $arg1);
+  print " +--------------------------------------------------------------+\r\n";
+
+   //print "exercise_exercise_term($arg1)";
+}
+
+/**
+ * Drush exercise_term - ext.
+ *
+ * Exercises a Single Taxonomy.
+ */
+function exerciser_exercise_term_drush($arg1) {
+
+  if (isset($arg1) && is_numeric($arg1)) {
+
+    print " +--------------------------------------------------------------+\r\n";
+    print " | type \t| tid \t\t| php \t| perm \t| solr  | total |\r\n";
+    print " +--------------------------------------------------------------+\r\n";
+
+    $result = exerciser_exercise_term('TERM', FALSE, $arg1);
+    print " | 'TAXONOMY' \t| $arg1 \t| " . strlen($result) .  "\t| \r\n";
+    //print exerciser_exercise_term('TERM', FALSE, $arg1);
+  }
+
+}
+
+/**
+ * Function Drush exerciser_get_url().
+ *
+ * Determines the page url for the given $nid.
+ */
+function exerciser_get_url($nid) {
+  global $base_url;
+
+  $source = "node/$nid";
+  $alias = drupal_get_path_alias($source);
+  $link = $base_url . '/' . $alias ;
+  return $link;
+}
+
+/**
+ * Function Drush exerciser_get_taxonomy_url().
+ *
+ * Determines the page url for the given $tid.
+ */
+function exerciser_get_taxonomy_url($tid) {
+
+  global $base_url;
+
+  $source = "taxonomy/term/$tid";
+  $alias = drupal_get_path_alias($source);
+  $link = $base_url . '/' . $alias ;
+
+  return $link;
+}
+
+/**
+ * Function exerciser_do_curl().
+ *
+ * Loads the page specified by $url.
+ */
+function exerciser_do_curl($url) {
+  $curl = curl_init();
+  curl_setopt ($curl, CURLOPT_URL, $url);
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+
+  $result = curl_exec ($curl);
+  curl_close ($curl);
+
+  return $result;
+}
+
+/**
+ * Function exerciser_load_page().
+ *
+ * Loads the page specified by $nid.
+ */
+function exerciser_load_page($nid) {
+  $url = exerciser_get_url($nid);
+  $result = exerciser_do_curl($url);
+  return $result;
+}
+
+/**
+ * Function exerciser_load_taxonomy_page().
+ *
+ * Loads the page specified by $nid.
+ */
+function exerciser_load_taxonomy_page($tid) {
+  $url = exerciser_get_taxonomy_url($tid);
+  $result = exerciser_do_curl($url);
+  return $result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * See if its a good node or not.
+ *
+ * $page_html   The html under gmp_testbit
+ * $nid         The node under test.
+ * RETURNS
+ *  TRUE        if the provided txt has a node body tag like `page-node-7`
+ *  FALSE       if the provided txt has a node body tag like `page-node-7`
+ */
+function exerciser_is_node_page($page_html, $nid) {
+  return strpos($page_html, 'page-node-' . $nid);
+}
+
+/**
+ * Add row to exerciser_log table.
+ *
+ * Arguments.
+ *  $nid          Node Id
+ *  $size         The Size of the page
+ *  $validated    If the page contained a node tag.
+ */
+function exerciser_insert_row($nid, $size, $validated) {
+  // Insert Row.
+  $result = db_insert('exerciser')
+    ->fields(array(
+      'nid' => $nid,
+      'size' => $size,
+      'validated' => $validated,
+    ))->execute();
+
+  return $result;
+}
+
+/**
+ * get The Row Count of the exerciser table.
+ *
+ * $page_html   The html under gmp_testbit
+ */
+function exerciser_get_row_count() {
+  $row_count = db_query("SELECT COUNT(*) FROM `exerciser`")->fetchField();
+  return $row_count;
+}
+
+
+/**
+ * Truncate the exercise table
+ *
+ * $page_html   The html under gmp_testbit
+ */
+ function exerciser_truncate() {
+   $result = db_truncate('exerciser')->execute();
+   return $result;
+}
+
+/**
+ * If the uri option is specified and valid returns a connection array if not false.
+ * //$dsn = "<driver>://<username>:<password>@<host>:<port>/<database>";
+ *              mysql://myuser:secret@localhost:port/database1
+ * returns a connection array or FALSE
+ */
+
+function exerciser_mysql_url_connect() {
+  $drush_alias = drush_get_option('alias', '');
+  if (!empty($drush_alias)) {
+    $alias_conn_str = exerciser_get_connection_string($drush_alias);
+    if (!empty($alias_conn_str)) {
+      $mysql_uri = $alias_conn_str;
+    }
+    else {
+      $mysql_uri = FALSE;
+    }
+  }
+  else {
+    $mysql_uri = drush_get_option('db', '');
+  }
+
+  if (empty($mysql_uri)) {
+    return FALSE;
+  }
+
+  if (strncmp($mysql_uri, 'mysql://', strlen('mysql://')) == 0) {
+    $conn_string = substr($mysql_uri, strlen('mysql://'));
+  }
+  else {
+    $conn_string = $mysql_uri;
+  }
+
+  $conn_string_arr = explode(':', $conn_string, 2);
+  if (count($conn_string_arr) == 2) {
+    $username = $conn_string_arr[0];
+    $pass_host_port_database = $conn_string_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  $pass_host_port_database_arr = explode('@', $pass_host_port_database);
+  if (count($pass_host_port_database_arr) == 2) {
+    $password = $pass_host_port_database_arr[0];
+    $host_port_database = $pass_host_port_database_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  $host_port_database_arr = explode(':', $host_port_database);
+  if (count($host_port_database_arr) == 2) {
+    $host = $host_port_database_arr[0];
+    $port_database = $host_port_database_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  $port_database_arr = explode('/', $port_database);
+  if (count($port_database_arr) == 2) {
+    $port = $port_database_arr[0];
+    $database = $port_database_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  return array(
+              'database' => $database,
+              'username' => $username,
+              'password' =>  $password,
+              'host' => $host,
+              'port' => $port,
+              'driver' => 'mysql',
+  );
+
+}
+
+/**
+ * Get the connection string from a drush alias.
+ */
+function exerciser_get_connection_string($drush_alias) {
+  $cmd_results = drush_invoke_process($drush_alias, 'sql-connect', array(), array("quiet" => TRUE));
+  if (isset($cmd_results['context']['db-url'])) {
+    return $cmd_results['context']['db-url'];
+  }
+  return FALSE;
+}
+
+/**
+ * Get the uri from a drush alias.
+ */
+function exerciser_get_uri($drush_alias) {
+  $cmd_results = drush_invoke_process($drush_alias, 'sql-connect', array(), array("quiet" => TRUE));
+  if (isset($cmd_results['context']['uri'])) {
+    return $cmd_results['context']['uri'];
+  }
+  return FALSE;
+}

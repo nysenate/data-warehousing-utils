@@ -1,0 +1,58 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the location module.
+ */
+
+/**
+ * An implementation of hook_uninstall().
+ */
+function exerciser_uninstall() {
+  // Clean up.
+  variable_del(EXERCISE_RUN_TYPE);
+  variable_del(EXERCISE_RUN);
+  variable_del(EXERCISE_RUN_SIZE);
+  variable_del(EXERCISE_RUN_CURRENT_POSITION);
+  variable_del(EXERCISE_RUN_CURRENT_ID);
+  variable_del(EXERCISE_RUN_CURRENT_TIMESTAMP);
+  variable_del(EXERCISE_RUN_PREVIOUS);
+  variable_del(EXERCISE_ALL_STOP);
+  variable_del(EXERCISE_DRUSH_ALIAS);
+}
+
+/**
+ * An implementation of hook_schema().
+ */
+function exerciser_schema() {
+  $schema = array();
+
+  $schema['exerciser'] = array(
+    'description' => 'exerciser Results.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Node Nid.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'size' => array(
+        'description' => 'Size of page.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'validated' => array(
+        'description' => 'Permission Errors.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+  
+  return $schema;
+}
