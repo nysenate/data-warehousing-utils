@@ -1,0 +1,739 @@
+<?php
+
+/**
+ * @file
+ * File exerciser.module.
+ */
+
+// Names of variables.
+define("WORKOUT_RUN_TYPE", "exercise_run_type");
+define("WORKOUT_RUN", "exercise_run_size_run");
+define("WORKOUT_RUN_START_TIMESTAMP", "exercise_run_start_timestamp");
+define("WORKOUT_RUN_SIZE", "exercise_run_size");
+define("WORKOUT_RUN_CURRENT_POSITION", "exercise_run_current_position");
+define("WORKOUT_RUN_CURRENT_PATH", "exercise_run_current_id");
+define("WORKOUT_RUN_CURRENT_TIMESTAMP", "exercise_run_current_timestamp");
+define("WORKOUT_RUN_PREVIOUS", "exercise_run_previous");
+define("WORKOUT_ALL_STOP", "workout_all_stop");
+define("WORKOUT_DRUSH_ALIAS", "exercise_drush_alias");
+define("WORKOUT_BASE_URI", "workout_base_uri");
+
+/**
+ * Implements the drush workout command.
+ */
+function workout_workout($limit = 0) {
+  workout_truncate();
+  $message = "Started Workout - " . date('m/d/Y H:i:s', time());
+  watchdog('workout_start', $message, array(), WATCHDOG_INFO);
+
+  if ($limit == 0 || is_numeric($limit) == FALSE) {
+    $limit = workout_exercise_multi_setup(-1, -1, -1);
+  }
+  variable_set(WORKOUT_RUN_START_TIMESTAMP, time());
+  variable_set(WORKOUT_RUN_TYPE, 'workout');
+  variable_set(WORKOUT_RUN, date("Y/m/d h:i:sa"));
+  variable_set(WORKOUT_RUN_SIZE, $limit);
+
+  $time = time();
+
+  // Set a default count of thread workers.
+  if ($limit > 0 && $limit <= 100) {
+    $default_num_threads = 1;
+  }
+  elseif ($limit > 100 && $limit <= 1000) {
+    $default_num_threads = 10;
+  }
+  elseif ($limit > 1000 && $limit <= 10000) {
+    $default_num_threads = 15;
+  }
+  elseif ($limit > 10000 && $limit <= 100000) {
+    $default_num_threads = 20;
+  }
+  elseif ($limit > 100000 && $limit <= 500000) {
+    $default_num_threads = 25;
+  }
+  elseif ($limit > 500000) {
+    $default_num_threads = 30;
+  }
+  else {
+    $default_num_threads = 1;
+  }
+
+  $threads = drush_get_option('threads', $default_num_threads);
+
+  $uri = '';
+  // Determine if a foriegn url from an `alias` option will be used.
+  $drush_alias = drush_get_option('alias', '');
+  if (!empty($drush_alias)) {
+    $uri = exerciser_get_uri($drush_alias);
+  }
+
+  // Determine if a foriegn url from an `uri` option will be used.
+  if (empty($uri)) {
+    $uri = drush_get_option('uri', '');
+  }
+
+  if (!empty($uri)) {
+    // If a uri was supplied.
+    variable_set(WORKOUT_BASE_URI, $uri);
+  }
+  else {
+    // If no uri was supplied make sure its unset.
+    variable_del(WORKOUT_BASE_URI);
+  }
+
+  try {
+
+    if ($limit < 1 || $threads < 1) {
+      throw new Exception('Threads, limit and batch size must be greater than 0!');
+    }
+
+    drush_print("Going to work on {$limit} jobs with {$threads} threads...");
+
+    workout_thread_manager($limit, 1, $threads, 'workout_exercise_multi_setup', 'workout_exercise_multi_teardown');
+  }
+  catch (Exception $e) {
+    drush_set_error($e->getMessage());
+  }
+
+  $time = time() - $time;
+  drush_print("Time taken with {$threads} threads: {$time} seconds");
+
+  // All done With the run.
+  variable_del(WORKOUT_RUN_START_TIMESTAMP);
+  variable_del(WORKOUT_RUN_TYPE);
+  variable_del(WORKOUT_RUN);
+  variable_del(WORKOUT_RUN_SIZE);
+  variable_del(WORKOUT_RUN_CURRENT_PATH);
+  variable_del(WORKOUT_RUN_CURRENT_POSITION);
+  variable_del(WORKOUT_RUN_CURRENT_TIMESTAMP);
+  variable_del(WORKOUT_BASE_URI);
+
+  $message = "Ended Workout - " . date('m/d/Y H:i:s', time());
+  watchdog('workout_end', $message, array(), WATCHDOG_INFO);
+}
+
+/**
+ * Multi threaded setup function.
+ *
+ * @param int $thread_id
+ *   An identifier for the thread which will execute this command.
+ * @param int $batch_size
+ *   How many tasks this command should work on.
+ * @param int $offset
+ *   The position in a queue of jobs for the first job this command
+ *   should work on.
+ *
+ * @return string
+ *   A command which can be executed on the command line.
+ */
+function workout_exercise_multi_setup($thread_id, $batch_size, $offset) {
+  static $cached_array = NULL;
+  static $starting_position = NULL;
+
+  if ($cached_array === NULL) {
+
+    // Before the query see if a remote database is specified.
+    $connection_arr = workout_mysql_url_connect();
+    if ($connection_arr !== FALSE) {
+      print "remote URI specified"; print_r($connection_arr);
+      Database::addConnectionInfo('workout', 'default', $connection_arr);
+      db_set_active('workout');
+    }
+
+    $result = db_query("SELECT DISTINCT `alias` FROM `url_alias` WHERE `alias` NOT LIKE 'file%' ORDER BY `alias`");
+    $cached_array = $result->fetchCol();
+
+    // After the query set back to the default db.
+    if ($connection_arr !== FALSE) {
+      db_set_active(); // set back to the default db.
+    }
+
+  }
+
+  if ($thread_id == -1 && $batch_size == -1 && $offset == -1) {
+    return count($cached_array);
+  }
+
+  if ($thread_id == -2 && $batch_size == -2) {
+    $starting_position = $offset;
+    return FALSE;
+  }
+
+  if ($starting_position != NULL && isset($starting_position) && is_numeric($starting_position)) {
+    $position = (int) $starting_position + (int) $offset;
+    // This is restarted run index starts from the $starting_position + $offset.
+    return "drush exercise-page " . $cached_array[$position] . ' ' . $position;
+  }
+  else {
+    // This run started from scratch so the offset is the index.
+    return "drush exercise-page " . $cached_array[$offset] . ' ' . $offset;
+  }
+
+}
+
+/**
+ * Multi threaded teardown function.
+ *
+ * @param int $thread_id
+ *   The thread which just completed.
+ */
+function workout_exercise_multi_teardown($thread_id) {
+  return "TEARDOWN\r\n\r\n";
+  // Nothing to do in this example.
+}
+
+/**
+ * A exp Implements the drush exercise-page exp cmd.
+ */
+function workout_exercise_page($arg1, $arg2) {
+  global $base_url;
+  $uri = '';
+
+  if (strstr($base_url, 'default') !== FALSE) {
+    $uri = variable_get(WORKOUT_BASE_URI, 'http://localhost');
+  }
+
+  if (empty($uri)) {
+    $uri = variable_get(WORKOUT_BASE_URI, $base_url);
+  }
+
+  if (empty($uri)) {
+    $uri = $base_url . '/' . $arg1;
+  }
+  else {
+    $uri = $uri . '/' . $arg1;
+  }
+
+  // Load the page.
+  $results = workout_do_curl($uri);
+
+  if (empty($results)) {
+    print "NO RESULTS FOR PAGE " . $uri . '  |  INDEX = ' . $arg2;
+  }
+  else {
+    print 'LOADED ' . strlen($results) . ' BYTES  |  URL = ' . $uri . '  |  INDEX = ' . $arg2;
+  }
+
+  // If there is no page-node-1234 class in the body
+  if (workout_is_node_page($results, $arg2) == FALSE) {
+    $validated = 1;
+    $title = workout_get_page_title($results);
+    print "\r\n VERIFIED ($title, $arg2) \r\n";
+  }
+  else {
+    $validated = 0;
+    $title = workout_get_page_title($results);
+    print "\r\n COULD NOT VERIFY ($title, $arg2) \r\n";
+  }
+
+  $alias = $arg1;
+  $size = strlen($results);
+  workout_insert_row($alias, $size, $validated);
+
+  variable_set(WORKOUT_RUN_CURRENT_PATH, $arg1);
+  variable_set(WORKOUT_RUN_CURRENT_POSITION, $arg2);
+  variable_set(WORKOUT_RUN_CURRENT_TIMESTAMP, time());
+
+}
+
+/**
+ * Command drush stop-workout - sw.
+ */
+function workout_stop_workout($arg1) {
+  variable_set(WORKOUT_ALL_STOP, TRUE);
+}
+
+/**
+ * Command drush restart-workout - rw.
+ */
+function workout_restart_workout($position = NULL, $limit = NULL) {
+
+  $total_num_pages = workout_exercise_multi_setup(-1, -1, -1);
+
+  if ($position != NULL && isset($position) && is_numeric($position) &&
+      $limit != NULL && isset($limit) && is_numeric($limit)) {
+    // Both Position and Limit were supplied.
+    if ($position > $total_num_pages) {
+      print "Specified position out of range must be less than $total_num_pages.\r\n";
+      return;
+    }
+
+    if (($position + $limit) > $total_num_pages) {
+      // Limit the $limit.
+      $limit = $total_num_pages - $position;
+    }
+
+  }
+
+  if ($position != NULL && isset($position) && is_numeric($position) &&
+      ($limit == NULL || !isset($limit))) {
+
+    // Only position supplied. Limit must be calculated.
+    if ($position > $total_num_pages) {
+      print "Specified position out of range must be less than $total_num_pages.\r\n";
+      return;
+    }
+
+    $limit = $total_num_pages - $position;
+
+  }
+
+  if (($position == NULL || !isset($position)) && ($limit == NULL || !isset($limit))) {
+
+    // Neither supplied. Need to get them both from previous run.
+    $position = variable_get(WORKOUT_RUN_CURRENT_POSITION);
+
+    if (!empty($position) &&
+        is_numeric($position) &&
+        !empty($position) &&
+        is_numeric($total_num_pages) &&
+        !empty($total_num_pages) &&
+        is_numeric($total_num_pages)) {
+
+      $limit = $total_num_pages - $current_position;
+
+    }
+
+  }
+
+  // Clear stopped status.
+  variable_del(WORKOUT_ALL_STOP, TRUE);
+
+  // Setup the $position.
+  workout_exercise_multi_setup(-2, -2, $position);
+
+  // Call workout_workout() to do all the work.
+  return workout_workout($limit);
+
+}
+
+/**
+ * Command drush clear-workout - cw.
+ */
+function workout_clear_workout($arg1) {
+  variable_del(WORKOUT_ALL_STOP);
+  variable_del(WORKOUT_RUN_START_TIMESTAMP);
+  variable_del(WORKOUT_RUN_TYPE);
+  variable_del(WORKOUT_RUN);
+  variable_del(WORKOUT_RUN_SIZE);
+  variable_del(WORKOUT_RUN_CURRENT_PATH);
+  variable_del(WORKOUT_RUN_CURRENT_POSITION);
+  variable_del(WORKOUT_RUN_CURRENT_TIMESTAMP);
+}
+
+/**
+ * Command drush workout-status - wstat.
+ */
+function workout_status($arg1) {
+
+  print
+  "--------------------------------------\r\n" .
+  variable_get(WORKOUT_ALL_STOP) . "\r\n" .
+  variable_get(WORKOUT_RUN_TYPE) . "\r\n" .
+  variable_get(WORKOUT_RUN) . "\r\n" .
+  variable_get(WORKOUT_RUN_CURRENT_POSITION) . "\r\n" .
+  variable_get(WORKOUT_RUN_SIZE) . "\r\n" .
+  variable_get(WORKOUT_RUN_CURRENT_PATH) . "\r\n" .
+  variable_get(WORKOUT_RUN_CURRENT_TIMESTAMP) . "\r\n" .
+  "--------------------------------------\r\n";
+
+}
+
+/**
+ * Function exerciser_do_curl().
+ *
+ * Loads the page specified by $url.
+ */
+function workout_do_curl($url) {
+  $curl = curl_init();
+  curl_setopt($curl, CURLOPT_URL, $url);
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($curl, CURLOPT_FOLLOWLOCATION, TRUE);
+
+  $result = curl_exec($curl);
+  curl_close($curl);
+
+  return $result;
+}
+
+/**
+ * Function workout_variable_get().
+ *
+ * Loads the variable directly from the database.
+ */
+function workout_variable_exists($variable_name) {
+  $num_variables = db_query("SELECT COUNT(*) FROM `variable` WHERE `name` = :name", array(':name' => $variable_name))->fetchField();
+  if ($num_variables > 0) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Function run_in_progress().
+ *
+ * Return 0 of not running
+ * Return 1 if running
+ * Return 2 if stopped
+ * Return 3 if stuck
+ * Loads the variable directly from the database.
+ */
+function workout_run_in_progress() {
+
+  $string_length = strlen(variable_get(WORKOUT_ALL_STOP)) +
+  strlen(variable_get(WORKOUT_RUN_TYPE)) +
+  strlen(variable_get(WORKOUT_RUN)) +
+  strlen(variable_get(WORKOUT_RUN_CURRENT_POSITION)) +
+  strlen(variable_get(WORKOUT_RUN_SIZE)) +
+  strlen(variable_get(WORKOUT_RUN_CURRENT_PATH)) +
+  strlen(variable_get(WORKOUT_RUN_CURRENT_TIMESTAMP));
+
+  $exercise_run_current_timestamp = variable_get(WORKOUT_RUN_CURRENT_TIMESTAMP);
+  $current_time = time();
+
+  $all_stop = workout_variable_exists(WORKOUT_ALL_STOP);
+
+  if ($string_length == 0) {
+    // Ready.
+    return 0;
+  }
+  elseif ($string_length > 0 && ($current_time - $exercise_run_current_timestamp) < 30) {
+    // Running.
+    return 1;
+  }
+  elseif ($string_length > 0 && $all_stop && ($current_time - $exercise_run_current_timestamp) > 30) {
+    // Stopped.
+    return 2;
+  }
+  elseif ($string_length > 0 && !$all_stop && ($current_time - $exercise_run_current_timestamp) > 30) {
+    // Stuck.
+    return 3;
+  }
+
+  return 0;
+}
+
+/**
+ * Multithreading manager for drush.
+ *
+ * @param int $job_count
+ *   The total number of jobs to process.
+ * @param int $job_batch_size
+ *   The number of jobs handed to each thread.
+ * @param int $thread_count
+ *   The maximum number of active threads.
+ * @param string $setup_function.
+ *   The function to generate the thread command. This is written for your
+ *   application its signature is:
+ *   my_setup_function($thread_id, $limit, $offset) : string;
+ *   Where $thread_id is the unique thread identifier, $limit is the total
+ *   number of records to process and offset is the starting point. The
+ *   function should return a string which is a shell command that the thread
+ *   will execute in a separate process.
+ * @param string $teardown_function.
+ *   A function which runs when a thread completes. It's signature is:
+ *   my_teardown_function($thread_id);
+ *   Your business logic can then run any cleanup which occurs when the
+ *   thread completes.
+ * @param int $starting_offset.
+ *   (optional) Start x records into the process.
+ */
+function workout_thread_manager($job_count, $job_batch_size, $thread_count, $setup_function, $teardown_function = '', $starting_offset = 0) {
+
+  if (!function_exists('proc_open')) {
+    throw new Exception('proc_open command is needed to use multi threading.');
+  }
+
+  $jobs_remaining = $job_count;
+  $processes = array();
+  $running = TRUE;
+  $offset = $starting_offset;
+  $start = time();
+
+  $descriptor_spec = array(
+    0 => array("pipe", "r"),
+    1 => array("pipe", "w"),
+    2 => array("pipe", "w"),
+  );
+
+  while ($running) {
+
+    // Fill all empty threads.
+    for ($thread_id = 0; $thread_id < $thread_count; $thread_id++) {
+      if ($jobs_remaining > 0 && !isset($processes[$thread_id])) {
+        $pipes = array();
+        $cmd = $setup_function($thread_id, $job_batch_size, $offset);
+        $process = proc_open($cmd, $descriptor_spec, $pipes);
+
+        drush_print("Thread {$thread_id} starts at offset $offset. Jobs remaining: $jobs_remaining");
+
+        foreach ($pipes as $pipe) {
+          stream_set_blocking($pipe, FALSE);
+        }
+
+        $offset += $job_batch_size;
+        $jobs_remaining -= $job_batch_size;
+
+        $processes[$thread_id] = array(
+          'process' => $process,
+          'pipes' => $pipes,
+        );
+        /*
+        sleep(1);
+         */
+      }
+    }
+
+    // Monitor running threads.
+    for ($thread_id = 0; $thread_id < $thread_count; $thread_id++) {
+      if (!isset($processes[$thread_id])) {
+        continue;
+      }
+
+      $process_running = workout_mt_monitor_process($thread_id, $processes[$thread_id]['process'], $processes[$thread_id]['pipes']);
+
+      if (!$process_running) {
+        unset($processes[$thread_id]);
+
+        if (!empty($teardown_function)) {
+          $teardown_function($thread_id);
+        }
+
+        $speed = ($job_count - $jobs_remaining) / (time() - $start);
+        $end_date = date('G:i:s d/m/y', ($job_count / $speed) + $start);
+        $speed = floor($speed * 60);
+
+        drush_print("Thread {$thread_id} finished. Average speed is {$speed} jobs/minute. Estimated completion at {$end_date}");
+      }
+    }
+
+    // Check for endgame.
+    $all_stop = workout_variable_exists(WORKOUT_ALL_STOP);
+    if (($jobs_remaining < 1 && empty($processes)) || ($all_stop == TRUE)) {
+      $running = FALSE;
+    }
+    else {
+      // Pause the master process.
+      /*
+      sleep(1);
+       */
+    }
+  }
+}
+
+/**
+ * Monitor a process.
+ *
+ * This function checks a running process.
+ * If it has finished it is closed down safely.
+ *
+ * @return bool
+ *   TRUE if the process is still running
+ *   FALSE if it is not running.
+ */
+function workout_mt_monitor_process($thread_id, $process, $pipes) {
+  $status = proc_get_status($process);
+
+  foreach ($pipes as $id => $pipe) {
+    if ($id == 0) {
+      // Don't read from stdin!
+      continue;
+    }
+
+    $messages = stream_get_contents($pipe);
+
+    if (!empty($messages)) {
+      foreach (explode("\n", $messages) as $message) {
+        $message = str_replace('[error]', '', $message);
+        $message = str_replace('[completed]', '', $message);
+        $message = trim($message);
+        if (!empty($message)) {
+          if ($id == 1) {
+            // Message from stdout.
+            drush_print(" -> T$thread_id: $message");
+          }
+          else {
+            // Message from stderr.
+            /*
+            drush_set_error(" -> T$thread_id: $message");
+             */
+          }
+        }
+      }
+    }
+  }
+
+  if (!$status['running']) {
+    foreach ($pipes as $pipe) {
+      fclose($pipe);
+    }
+
+    proc_close($process);
+  }
+
+  return $status['running'];
+}
+
+/**
+ * See if its a good node or not.
+ *
+ * $page_html   The html under gmp_testbit
+ * $nid         The node under test.
+ * RETURNS
+ *  TRUE        if the provided txt has a node body tag like `page-node-7`
+ *  FALSE       if the provided txt has a node body tag like `page-node-7`
+ */
+function workout_is_node_page($page_html, $nid) {
+  return strpos($page_html, 'page-node-' . $nid);
+}
+
+/**
+ * Add row to workout table.
+ */
+function workout_insert_row($alias, $size, $validated) {
+  // Insert Row.
+  $result = db_insert('workout')
+    ->fields(array(
+//      'nid' => $nid,
+      'alias' => $alias,
+      'size' => $size,
+      'validated' => $validated,
+    ))->execute();
+
+}
+
+/**
+ * get The Row Count of the workout table
+ *
+ * $page_html   The html under gmp_testbit
+ */
+function workout_get_row_count() {
+  $row_count = db_query("SELECT COUNT(*) FROM `exerciser`")->fetchField();
+  return $row_count;
+}
+
+
+/**
+ * Truncate the workout table
+ *
+ * $page_html   The html under gmp_testbit
+ */
+ function workout_truncate() {
+   $result = db_truncate('exerciser')->execute();
+   return $result;
+}
+
+
+
+/**
+ * If the uri option is specified and valid returns a connection array if not false.
+ * //$dsn = "<driver>://<username>:<password>@<host>:<port>/<database>";
+ *              mysql://myuser:secret@localhost:port/database1
+ * returns a connection array or FALSE
+ */
+
+function workout_mysql_url_connect() {
+  $drush_alias = drush_get_option('alias', '');
+  if (!empty($drush_alias)) {
+    $alias_conn_str = workout_get_connection_string($drush_alias);
+    if (!empty($alias_conn_str)) {
+      $mysql_uri = $alias_conn_str;
+    }
+    else {
+      $mysql_uri = FALSE;
+    }
+  }
+  else {
+    $mysql_uri = drush_get_option('db', '');
+  }
+
+  if (empty($mysql_uri)) {
+    return FALSE;
+  }
+
+  if (strncmp($mysql_uri, 'mysql://', strlen('mysql://')) == 0) {
+    $conn_string = substr($mysql_uri, strlen('mysql://'));
+  }
+  else {
+    $conn_string = $mysql_uri;
+  }
+
+  $conn_string_arr = explode(':', $conn_string, 2);
+  if (count($conn_string_arr) == 2) {
+    $username = $conn_string_arr[0];
+    $pass_host_port_database = $conn_string_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  $pass_host_port_database_arr = explode('@', $pass_host_port_database);
+  if (count($pass_host_port_database_arr) == 2) {
+    $password = $pass_host_port_database_arr[0];
+    $host_port_database = $pass_host_port_database_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  $host_port_database_arr = explode(':', $host_port_database);
+  if (count($host_port_database_arr) == 2) {
+    $host = $host_port_database_arr[0];
+    $port_database = $host_port_database_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  $port_database_arr = explode('/', $port_database);
+  if (count($port_database_arr) == 2) {
+    $port = $port_database_arr[0];
+    $database = $port_database_arr[1];
+  }
+  else {
+    return FALSE;
+  }
+
+  return array(
+              'database' => $database,
+              'username' => $username,
+              'password' =>  $password,
+              'host' => $host,
+              'port' => $port,
+              'driver' => 'mysql',
+  );
+
+}
+
+/**
+ * Get the connection string from a drush alias.
+ */
+function workout_get_connection_string($drush_alias) {
+  $cmd_results = drush_invoke_process($drush_alias, 'sql-connect', array(), array("quiet" => TRUE));
+  if (isset($cmd_results['context']['db-url'])) {
+    return $cmd_results['context']['db-url'];
+  }
+  return FALSE;
+}
+
+/**
+ * Get the uri from a drush alias.
+ */
+function workout_get_uri($drush_alias) {
+  $cmd_results = drush_invoke_process($drush_alias, 'sql-connect', array(), array("quiet" => TRUE));
+  if (isset($cmd_results['context']['uri'])) {
+    return $cmd_results['context']['uri'];
+  }
+  return FALSE;
+}
+
+/**
+ * Get the page title froma an html page.
+ */
+function workout_get_page_title($page_html) {
+  $start = stripos($page_html, '<title>');
+  $end = stripos($page_html, '</title>', $start);
+  return substr($page_html, $start + strlen('<title>'), $end -  $start - strlen('<title>'));
+}

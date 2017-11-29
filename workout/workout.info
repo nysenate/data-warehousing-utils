@@ -1,0 +1,7 @@
+name = Workout
+description = Exercises Drupal Content Multi Threaded.
+core = 7.x
+
+package = DB LOG TOOLS
+
+version = "7.x-1.0"

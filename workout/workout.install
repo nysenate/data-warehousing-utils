@@ -1,0 +1,57 @@
+<?php
+
+/**
+ * @file
+ * workout.install
+ */
+
+/**
+ * An implementation of hook_uninstall().
+ */
+function workout_uninstall() {
+  // Clean up.
+  // variable_del(?????????);
+}
+
+/**
+ * An implementation of hook_schema().
+ */
+function workout_schema() {
+  $schema = array();
+
+  $schema['workout'] = array(
+    'description' => 'workout Results.',
+    'fields' => array(
+      'wid' => array(
+        'description' => 'Node Nid.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'alias' => array(
+        'description' => 'The path.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'size' => array(
+        'description' => 'Size of page.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'validated' => array(
+        'description' => 'Permission Errors.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('wid'),
+  );
+
+  return $schema;
+}
