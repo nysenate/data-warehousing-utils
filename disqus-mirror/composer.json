@@ -1,0 +1,15 @@
+{
+  "require": {
+    "ulrichsg/getopt-php": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "DisqusImporter\\": "src/"
+    },
+    "classmap": [
+      "disqusapi/disqusapi.php",
+      "database/",
+      "database/mysql/"
+    ]
+  }
+}

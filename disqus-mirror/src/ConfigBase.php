@@ -1,4 +1,8 @@
 <?php
+namespace DisqusImporter;
+
+use \RuntimeException;
+use GetOpt\GetOpt;
 
 /**
  * Configuration class
@@ -20,7 +24,7 @@
  *   3. values read from the configuration file
  *   4. values read from the command line
  */
-class ConfigBase {
+abstract class ConfigBase {
 
   /**
    * Standard options.  The available options array uses the same structure:
@@ -107,13 +111,13 @@ class ConfigBase {
 
     // initialize CLI options
     $this->cli_options = ((php_sapi_name() == 'cli') ? $this->parseCliOptions() : array());
-    if (array_ifelse('help', $this->cli_options, FALSE)) {
+    if (($this->cli_options['help'] ?? FALSE)) {
       die($this->getUsage());
     }
 
     // Merge the options so far to get the proper value of config_file
     $this->options = array_merge($defaults, $options);
-    $this->options['config_file'] = array_ifelse('config_file', $this->cli_options, $this->options['config_file']);
+    $this->options['config_file'] = ($this->cli_options['config_file'] ?? $this->options['config_file']);
 
     // read the config file
     $conf_options = $this->readConfig();
@@ -160,13 +164,13 @@ class ConfigBase {
         $onemsg = "-{$val['short']} | ";
       }
       $onemsg .= "--{$key}";
-      if (!array_ifelse('required', $val)) {
+      if (!($val['required'] ?? FALSE)) {
         $onemsg = "[$onemsg]";
       } else {
         $onemsg .= "  (required)";
       }
       $onemsg .= " {$val['label']}\n{$val['description']}";
-      if (array_ifelse('default', $val)) {
+      if (($val['default'] ?? FALSE)) {
         $onemsg .= " Default: {$val['default']}";
       }
       $msg[] = $onemsg;
@@ -245,17 +249,17 @@ class ConfigBase {
         preg_replace(
           '/[^a-z]/i',
           '_',
-          array_ifelse('index', $val, $key)
+          ($val['index'] ?? $key)
         )
       );
 
       // Scrub the remaining elements
-      $val['val'] = (int) array_ifelse('val', $val);
-      $val['label'] = array_ifelse('label', $val, $val['index']);
-      $val['short'] = (string) array_ifelse('short', $val);
-      $val['description'] = (string) array_ifelse('description', $val);
-      $val['required'] = (boolean) array_ifelse('required', $val);
-      $val['default'] = array_ifelse('default', $val);
+      $val['val'] = (int) ($val['val'] ?? FALSE);
+      $val['label'] = ($val['label'] ?? $val['index']);
+      $val['short'] = (string) ($val['short'] ?? FALSE);
+      $val['description'] = (string) ($val['description'] ?? FALSE);
+      $val['required'] = (boolean) ($val['required'] ?? FALSE);
+      $val['default'] = ($val['default'] ?? FALSE);
 
       // Add the polished version to the return
       $this->_runtime_command_options[$key] = $val;
@@ -269,7 +273,7 @@ class ConfigBase {
     $ret = array();
 
     // Set the config filename to be used
-    $ini_file = array_ifelse('config_file', $this->options, 'config.ini');
+    $ini_file = ($this->options['config_file'] ?? 'config.ini');
 
     // Read the configuration file, if necessary
     if (!$this->_config_loaded || $refresh) {

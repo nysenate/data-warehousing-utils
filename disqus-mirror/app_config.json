@@ -1,0 +1,11 @@
+{
+  "commands": {
+    "create-tables": {
+      "operands": [
+        { "name": "sqlfile", "mode": "required" }
+      ],
+      "description": "Runs the SQL necessary to create the database schema.  Requires the name of the file containing the SQL commands.",
+      "short": "Creates the database schema"
+    }
+  }
+}

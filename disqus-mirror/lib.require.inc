@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/vendor/autoload.php';
+
 require_once 'class.logger.php';
 require_once 'class.configbase.inc';
 require_once 'class.config.inc';

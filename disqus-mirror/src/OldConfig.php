@@ -1,5 +1,7 @@
 <?php
-class Config extends ConfigBase {
+namespace DisqusImporter;
+
+class OldConfig extends ConfigBase {
   /**
    * Available options array.  Structure is:
    *   array( <long_option_name> = array(
@@ -87,4 +89,7 @@ class Config extends ConfigBase {
     )
   );
 
+  public function newgetopt() {
+
+  }
 }

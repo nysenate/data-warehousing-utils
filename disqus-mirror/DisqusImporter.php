@@ -1,4 +1,13 @@
 <?php
+namespace DisqusImporter;
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+$config = Config::getInstance();
+die(var_export($config,1));
+
+die('woot');
+
 /**
  * Test app to hit disqus API and query comments/threads
  *
@@ -9,10 +18,12 @@ require_once 'lib.require.inc';
 
 // instantiate the configuration and the logger
 try {
-  $config = Config::getInstance();
+  $config = OldConfig::getInstance();
 } catch (Exception $e) {
   die("FATAL: " . $e->getMessage() . "\n");
 }
+
+
 $logger = Logger::getInstance($config->error_log_level, $config->error_log, '.', NYSS_LOG_MODE_TEE);
 
 // debug log for runtime config
@@ -37,33 +48,8 @@ try {
   exit(1);
 }
 
-// If the create tables is detected, run the SQL file and leave.
-if ($config->create_tables) {
-  $logger->log("Creating tables based on SQL in file: {$config->create_tables}", NYSS_LOG_LEVEL_DEBUG);
 
-  // Should not run multi-statement queries, so explode the contents and run
-  // them one by one.
-  $sql = explode(';', @file_get_contents($config->create_tables));
-  $result = TRUE;
-  try {
-    foreach ($sql as $statement) {
-      $q = trim($statement);
-      if ($q) {
-        $result &= db_query($statement);
-      }
-    }
-  } catch (Exception $e) {
-    $logger->log("Create tables task failed: " . $e->getMessage(), NYSS_LOG_LEVEL_FATAL);
-    $result = FALSE;
-  } finally {
-    if ($result) {
-      $msg = "Tables successfully created from file {$config->create_tables}.";
-      $logger->log($msg, NYSS_LOG_LEVEL_INFO);
-      echo $msg."\n";
-    }
-  }
-  exit(!$result);
-}
+
 
 // instantiate Disqus API
 $disqus = new DisqusAPI($config->api_secret);
