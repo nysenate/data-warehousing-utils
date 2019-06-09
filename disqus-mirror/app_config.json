@@ -5,7 +5,70 @@
         { "name": "sqlfile", "mode": "required" }
       ],
       "description": "Runs the SQL necessary to create the database schema.  Requires the name of the file containing the SQL commands.",
-      "short": "Creates the database schema"
+      "short_description": "Creates the database schema"
+    }
+  },
+  "options": {
+    "config-file": {
+      "mode": "required",
+      "description": "Path/filename to an INI-style file holding configuration.",
+      "short": "c"
+    },
+    "test-config": {
+      "mode": "no",
+      "description": "Test configuration settings and exit."
+    },
+    "help": {
+      "mode": "no",
+      "description": "Print help text",
+      "short": "?"
+    },
+    "forum": {
+      "mode": "required",
+      "description": "The shortname of the Disqus forum.",
+      "short": "f"
+    },
+    "api-secret": {
+      "mode": "required",
+      "description": "Disqus API secret key."
+    },
+    "db-name": {
+      "mode": "required",
+      "description": "Database name.",
+      "short": "D",
+      "default": "disqus"
+    },
+    "db-user": {
+      "mode": "required",
+      "description": "Database user",
+      "short": "u"
+    },
+    "db-pass": {
+      "mode": "required",
+      "description": "Database password",
+      "short": "p"
+    },
+    "db-host": {
+      "mode": "required",
+      "description": "Database host",
+      "short": "H",
+      "default": "localhost"
+    },
+    "db-port": {
+      "mode": "required",
+      "description": "Database port",
+      "short": "P",
+      "default": "3306"
+    },
+    "error-log": {
+      "mode": "required",
+      "description": "Path/filename to the error log",
+      "default": "error_log"
+    },
+    "error-log-level": {
+      "mode": "required",
+      "description": "Detail level for logging.  One of: FATAL, ERROR, WARN, INFO, DEBUG, or 0-4.",
+      "default": "WARN"
     }
   }
 }

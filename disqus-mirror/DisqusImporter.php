@@ -1,52 +1,36 @@
 <?php
 namespace DisqusImporter;
 
-require_once __DIR__ . '/vendor/autoload.php';
+define('ROOTDIR', __DIR__);
+
+require_once ROOTDIR . '/vendor/autoload.php';
 
 $config = Config::getInstance();
-die(var_export($config,1));
-
-die('woot');
-
-/**
- * Test app to hit disqus API and query comments/threads
- *
- */
-
-// all required files go here
-require_once 'lib.require.inc';
-
-// instantiate the configuration and the logger
-try {
-  $config = OldConfig::getInstance();
-} catch (Exception $e) {
-  die("FATAL: " . $e->getMessage() . "\n");
-}
-
-
-$logger = Logger::getInstance($config->error_log_level, $config->error_log, '.', NYSS_LOG_MODE_TEE);
 
 // debug log for runtime config
-$logger->log("Runtime Config:\n".var_export($config->getOptions(),1), NYSS_LOG_LEVEL_DEBUG);
-
-// necessary setup for Drupal's DAL
-$databases['default']['default'] = array(
-  'driver' => 'mysql',
-  'database' => $config->db_name,
-  'username' => $config->db_user,
-  'password' => $config->db_pass,
-  'host'     => $config->db_host,
-  'port'     => $config->db_port
-);
+$config->log("Runtime Config:\n".var_export($config->getSettings(),1), Logger::NYSS_LOG_LEVEL_DEBUG);
 
 // This will a) ensure the connection can be made, and b) ensure proper encoding
 // is maintained.
 try {
-  $set_names_query = db_query("set names utf8mb4;");
-} catch (Exception $e) {
-  $logger->log("Could not run 'SET NAMES' on connection! (".$e->getMessage().")", NYSS_LOG_LEVEL_FATAL);
-  exit(1);
+	$set_names_query = db_query("set names utf8mb4;");
+} catch (\Exception $e) {
+	$config->log("Could not run 'SET NAMES' on connection! (".$e->getMessage().")", Logger::NYSS_LOG_LEVEL_FATAL);
+	//exit(1);
 }
+
+$command = $config->getCommand() ? $config->getCommand()->getName() : '';
+
+if ($command == 'help' || $config->help || !$command) {
+	$config->log("Rendering help text and exiting", Logger::NYSS_LOG_LEVEL_INFO);
+	echo "\n" . $config->renderHelp() . "\n";
+	exit();
+}
+
+$config->log("Config loaded, running command $command . . .", Logger::NYSS_LOG_LEVEL_INFO);
+die("w0oT!\n" . var_export($config->getSettings(),1));
+
+
 
 
 

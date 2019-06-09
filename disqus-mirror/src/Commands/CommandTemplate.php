@@ -41,7 +41,7 @@ abstract class CommandTemplate extends Command {
     /** @var CommandTemplate $cmd */
     $cmd = new $command_class($name);
     $cmd->setDescription($source->description ?? '')
-      ->setShortDescription($source->short ?? '')
+      ->setShortDescription($source->short_description ?? '')
       ->addOperands($operands);
     return $cmd;
   }

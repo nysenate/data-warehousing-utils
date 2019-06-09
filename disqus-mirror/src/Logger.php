@@ -7,35 +7,35 @@ namespace DisqusImporter;
   Provides a logging interface, including tee to file/stdout and severity gradiations
 */
 
-/* log level constants */
-const NYSS_LOG_LEVEL_FATAL = 0;
-const NYSS_LOG_LEVEL_ERROR = 1;
-const NYSS_LOG_LEVEL_WARN  = 2;
-const NYSS_LOG_LEVEL_INFO  = 3;
-const NYSS_LOG_LEVEL_DEBUG = 4;
-
-/* log mode constants */
-const NYSS_LOG_MODE_FILE   = 0;
-const NYSS_LOG_MODE_STDOUT = 1;
-const NYSS_LOG_MODE_TEE    = 2;
-
 
 class Logger {
 
+	/* log level constants */
+	const NYSS_LOG_LEVEL_FATAL = 0;
+	const NYSS_LOG_LEVEL_ERROR = 1;
+	const NYSS_LOG_LEVEL_WARN  = 2;
+	const NYSS_LOG_LEVEL_INFO  = 3;
+	const NYSS_LOG_LEVEL_DEBUG = 4;
+
+	/* log mode constants */
+	const NYSS_LOG_MODE_FILE   = 0;
+	const NYSS_LOG_MODE_STDOUT = 1;
+	const NYSS_LOG_MODE_TEE    = 2;
+
 	public static $LOG_LEVELS = [
-		'FATAL' => NYSS_LOG_LEVEL_FATAL,
-		'ERROR' => NYSS_LOG_LEVEL_ERROR,
-		'WARN'  => NYSS_LOG_LEVEL_WARN,
-		'INFO'  => NYSS_LOG_LEVEL_INFO,
-		'DEBUG' => NYSS_LOG_LEVEL_DEBUG,
+		'FATAL' => self::NYSS_LOG_LEVEL_FATAL,
+		'ERROR' => self::NYSS_LOG_LEVEL_ERROR,
+		'WARN'  => self::NYSS_LOG_LEVEL_WARN,
+		'INFO'  => self::NYSS_LOG_LEVEL_INFO,
+		'DEBUG' => self::NYSS_LOG_LEVEL_DEBUG,
 	];
 
 	public static $LOG_LEVEL_LABELS = [
-		NYSS_LOG_LEVEL_FATAL => 'FATAL',
-		NYSS_LOG_LEVEL_ERROR => 'ERROR',
-		NYSS_LOG_LEVEL_WARN  => 'WARN',
-		NYSS_LOG_LEVEL_INFO  => 'INFO',
-		NYSS_LOG_LEVEL_DEBUG => 'DEBUG',
+		self::NYSS_LOG_LEVEL_FATAL => 'FATAL',
+		self::NYSS_LOG_LEVEL_ERROR => 'ERROR',
+		self::NYSS_LOG_LEVEL_WARN  => 'WARN',
+		self::NYSS_LOG_LEVEL_INFO  => 'INFO',
+		self::NYSS_LOG_LEVEL_DEBUG => 'DEBUG',
 	];
 
 	private static $instance = NULL;
@@ -47,11 +47,11 @@ class Logger {
 	// TODO: why split file name and location?
 	protected $log_location = '';
 
-	protected $log_level = NYSS_LOG_LEVEL_ERROR;
+	protected $log_level = self::NYSS_LOG_LEVEL_ERROR;
 
-	protected $log_mode = NYSS_LOG_MODE_FILE;
+	protected $log_mode = self::NYSS_LOG_MODE_FILE;
 
-	private function __construct($lvl = NYSS_LOG_LEVEL_ERROR, $fn = '', $loc = NULL, $mode = NYSS_LOG_MODE_FILE) {
+	private function __construct($lvl = self::NYSS_LOG_LEVEL_ERROR, $fn = '', $loc = NULL, $mode = self::NYSS_LOG_MODE_FILE) {
 		$lvl = static::$LOG_LEVELS[$lvl] ?? $lvl;
 		$this->setLevel($lvl);
 		$this->setMode($mode);
@@ -132,7 +132,7 @@ class Logger {
 	 *
 	 * @return Logger
 	 */
-	public static function getInstance($lvl = NYSS_LOG_LEVEL_ERROR, $fn = '', $loc = NULL, $mode = NYSS_LOG_MODE_FILE) {
+	public static function getInstance($lvl = self::NYSS_LOG_LEVEL_ERROR, $fn = '', $loc = NULL, $mode = self::NYSS_LOG_MODE_FILE) {
 		if (!static::$instance) {
 			static::$instance = new static($lvl, $fn, $loc, $mode);
 		}
@@ -159,11 +159,11 @@ class Logger {
 	}
 
 	protected function _isUsingFile() {
-		return in_array($this->log_mode, [NYSS_LOG_MODE_FILE, NYSS_LOG_MODE_TEE]);
+		return in_array($this->log_mode, [self::NYSS_LOG_MODE_FILE, self::NYSS_LOG_MODE_TEE]);
 	}
 
 	protected function _isUsingStdout() {
-		return in_array($this->log_mode, [NYSS_LOG_MODE_STDOUT, NYSS_LOG_MODE_TEE]);
+		return in_array($this->log_mode, [self::NYSS_LOG_MODE_STDOUT, self::NYSS_LOG_MODE_TEE]);
 	}
 
 	protected function _openFile() {
@@ -203,7 +203,7 @@ class Logger {
 		}
 	}
 
-	public function log($msg, $lvl = NYSS_LOG_LEVEL_INFO) {
+	public function log($msg, $lvl = self::NYSS_LOG_LEVEL_INFO) {
 		$lvl = (int) $lvl;
 		if ($lvl < 0) {
 			$lvl = 0;
@@ -231,7 +231,7 @@ class Logger {
 		}
 	}
 
-	public function setLevel($lvl = NYSS_LOG_LEVEL_ERROR) {
+	public function setLevel($lvl = self::NYSS_LOG_LEVEL_ERROR) {
 		$lvl = (int) (static::$LOG_LEVELS[$lvl] ?? $lvl);
 		if ($lvl < 1) {
 			$lvl = 0;
@@ -253,10 +253,10 @@ class Logger {
 		$this->initLog();
 	}
 
-	public function setMode($mode = NYSS_LOG_MODE_FILE) {
+	public function setMode($mode = self::NYSS_LOG_MODE_FILE) {
 		$mode = (int) $mode;
 		if (!in_array($mode, [0, 1, 2])) {
-			$mode = NYSS_LOG_MODE_FILE;
+			$mode = self::NYSS_LOG_MODE_FILE;
 		}
 		$this->log_mode = $mode;
 	}

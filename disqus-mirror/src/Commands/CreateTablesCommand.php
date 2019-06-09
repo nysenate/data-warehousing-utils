@@ -2,16 +2,16 @@
 
 namespace DisqusImporter\Commands;
 
-use DisqusImporter\OldConfig;
-use GetOpt\GetOpt;
-use GetOpt\Command;
-use GetOpt\Operand;
+use DisqusImporter\Config;
+use DisqusImporter\Logger;
 
 class CreateTablesCommand extends CommandTemplate {
 	public function handle() {
+		$config = Config::getInstance();
+
 		$filename = $this->getOperand('sqlfile');
 
-	  $this->log("Creating tables based on SQL in file: {$filename}", NYSS_LOG_LEVEL_INFO);
+	  $config->log("Creating tables based on SQL in file: {$filename}", Logger::NYSS_LOG_LEVEL_INFO);
 
 	  // Should not run multi-statement queries, so explode the contents and run
 	  // them one by one.
@@ -25,15 +25,15 @@ class CreateTablesCommand extends CommandTemplate {
 			  }
 		  }
 	  } catch (\Exception $e) {
-		  $this->log("Create tables task failed: " . $e->getMessage(), NYSS_LOG_LEVEL_FATAL);
+		  $config->log("Create tables task failed: " . $e->getMessage(), Logger::NYSS_LOG_LEVEL_FATAL);
 		  $result = FALSE;
 	  } finally {
 		  if ($result) {
 			  $msg = "Tables successfully created from file {$filename}.";
-			  $this->log($msg, NYSS_LOG_LEVEL_INFO);
-			  echo $msg."\n";
+			  $config->log($msg, Logger::NYSS_LOG_LEVEL_INFO);
+			  $result =  $msg."\n";
 		  }
 	  }
-	  exit(!$result);
+	  return $result;
   }
 }
