@@ -110,8 +110,13 @@ class Config {
 			$this->populateINI($cfg_file);
 		}
 
+		// TODO: https://github.com/getopt-php/getopt-php/issues/142
+		/*
+		echo "POSTINI GETOPT=\n".var_export($this->getopt,1)."\n\n";
 		// Re-process all options to ensure command line takes precedence.
 		$this->getopt->process();
+		echo "FINAL POSTPROC GETOPT=\n".var_export($this->getopt,1)."\n\n";
+		*/
 
 		// Populate the easy-access property.
 		$this->settings = $this->getopt->getOptions();
@@ -173,6 +178,7 @@ class Config {
 	 */
 	public function __get($name) {
 		$name = str_replace('_', '-', $name);
+
 		return $this->settings[$name] ?? NULL;
 	}
 
@@ -183,6 +189,7 @@ class Config {
 	 * @param $value
 	 */
 	public function __set($name, $value) {
+		$name = str_replace('_', '-', $name);
 		$this->settings[$name] = $value;
 	}
 
@@ -195,6 +202,12 @@ class Config {
 	 * (i.e., $json->commands)
 	 */
 	public function populateCommands($object = NULL) {
+		$help_cmd = (object) [
+			'description'       => "Print help text and exit",
+			'short_description' => "Print help text",
+		];
+		$cmd      = Commands\CommandTemplate::createFromTemplate('help', $help_cmd);
+		$this->getopt->addCommand($cmd);
 		if (is_object($object)) {
 			foreach ($object as $key => $val) {
 				$cmd = Commands\CommandTemplate::createFromTemplate($key, $val);
@@ -273,8 +286,8 @@ class Config {
 		return $this->settings;
 	}
 
-	public function getCommand() {
-		return $this->getopt->getCommand();
+	public function getCommand($name = NULL) {
+		return $this->getopt->getCommand($name);
 	}
 
 	public function renderHelp() {

@@ -2,10 +2,24 @@
   "commands": {
     "create-tables": {
       "operands": [
-        { "name": "sqlfile", "mode": "required" }
+        {
+          "name": "sqlfile",
+          "mode": "required",
+          "description": "A file containing the SQL to exeute"
+        }
       ],
-      "description": "Runs the SQL necessary to create the database schema.  Requires the name of the file containing the SQL commands.",
+      "description": "Runs the SQL necessary to create the database schema.  Requires a file name.",
       "short_description": "Creates the database schema"
+    },
+    "import": {
+      "options": [
+        {
+          "long": "since",
+          "mode": "required",
+          "description": "Filter by minimum date"
+        }
+      ],
+      "description": "Attempts to import objects from Disqus API calls."
     }
   },
   "options": {
