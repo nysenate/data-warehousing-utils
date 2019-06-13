@@ -237,7 +237,7 @@ abstract class APIObjectTemplate {
 			// Save the current cursor to retain "last read" status
 			$this->setCursor($cursor);
 			$count++;
-		} while ($cursor->hasNext && $count < 10);
+		} while ($cursor->hasNext);
 		$this->config->log("Finished executing API search for: " . get_called_class(), Logger::NYSS_LOG_LEVEL_INFO);
 	}
 }

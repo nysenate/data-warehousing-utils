@@ -110,14 +110,6 @@ class Config {
 			$this->populateINI($cfg_file);
 		}
 
-		// TODO: https://github.com/getopt-php/getopt-php/issues/142
-		/*
-		echo "POSTINI GETOPT=\n".var_export($this->getopt,1)."\n\n";
-		// Re-process all options to ensure command line takes precedence.
-		$this->getopt->process();
-		echo "FINAL POSTPROC GETOPT=\n".var_export($this->getopt,1)."\n\n";
-		*/
-
 		// Populate the easy-access property.
 		$this->settings = $this->getopt->getOptions();
 	}
@@ -263,7 +255,8 @@ class Config {
 				$key = str_replace('_', '-', $key);
 				// Don't allow the config file to reset the config_file option.
 				if ($key !== 'config-file' && $key !== 'c') {
-					$this->getopt->getOption($key, TRUE)->setValue($val);
+				  // Set the default value so command line can override it.
+					$this->getopt->getOption($key, TRUE)->setDefaultValue($val);
 				}
 			}
 		}
