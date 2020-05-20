@@ -1,6 +1,0 @@
-# ignoring PHPStorm
-.idea
-config.ini
-error_log
-composer.lock
-vendor/
