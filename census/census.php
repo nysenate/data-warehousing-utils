@@ -3,9 +3,9 @@
 
 namespace NYS_Census;
 
-define('ROOTDIR', __DIR__);
+chdir(__DIR__);
 
-require_once ROOTDIR . '/vendor/autoload.php';
+require_once 'vendor/autoload.php';
 
 // Get the config instance.
 $config = Config::getInstance();

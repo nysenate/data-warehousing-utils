@@ -8,7 +8,7 @@ use NYS_Census\Command;
 
 // TODO: need to move this into PSR-4, maybe a different package?
 // Drupal's MySQL DAL
-require_once ROOTDIR . '/database/database.inc';
+require_once 'database/database.inc';
 
 /**
  * Class Config
