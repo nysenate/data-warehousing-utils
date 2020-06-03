@@ -18,17 +18,6 @@ if (!$command) {
 }
 $cmd_name = $command->getName();
 
-/*if (!$cmd_name == 'help') {
-  // Set encoding/
-  try {
-    db_query("set names utf8mb4;");
-  }
-  catch (\Exception $e) {
-    $config->log("Could not run 'SET NAMES' on connection! (" . $e->getMessage() . ")", Logger::NYSS_LOG_LEVEL_FATAL);
-    return 999;
-  }
-}*/
-
 $config->log("Executing command '$cmd_name' . . .", Logger::NYSS_LOG_LEVEL_INFO);
 
 // Run the command.
