@@ -1,0 +1,22 @@
+; app-specific settings
+; API Key from api.census.gov
+api_key=1234567890abcdef
+; default is https://api.census.gov/data/2020/dec/responserate
+; api_url=https://some.url/path
+
+; local database config
+db_name=databasename
+db_user=username
+db_pass=password
+db_host=remotehost.net
+db_port=3306
+
+; error logging
+; FATAL = 0
+; ERROR = 1
+; WARN  = 2
+; INFO  = 3
+; DEBUG = 4
+; DEBUGAPI = 5
+error_log=error.log
+error_log_level=3
