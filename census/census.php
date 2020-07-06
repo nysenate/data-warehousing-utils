@@ -3,7 +3,7 @@
 
 namespace NYS_Census;
 
-chdir(__DIR__);
+define('ROOTDIR', __DIR__);
 
 require_once 'vendor/autoload.php';
 

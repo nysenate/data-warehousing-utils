@@ -29,6 +29,11 @@ require_once 'database/database.inc';
  */
 class Config {
 
+  /**
+   * @var string
+   */
+  protected static $default_config_file = 'app_config.json';
+
 	/**
 	 * @var \NYS_Census\Config null
 	 */
@@ -77,6 +82,19 @@ class Config {
 		];
 	}
 
+  /**
+   * Returns the original filename, if passed.  If not, returns the
+   * default path/filename.
+   *
+   * @param string $filename
+   *
+   * @return string
+   */
+  protected function resolveConfigFile($filename = NULL) {
+	  $root = defined('ROOTDIR') ? ROOTDIR : __DIR__;
+	  return $filename ? $filename : $root . '/' . static::$default_config_file;
+  }
+
 	/**
 	 * Configure the getopt object.  This will instantiate the object
 	 * and populate the commands, options, and operands from the JSON
@@ -88,7 +106,7 @@ class Config {
 	 * @param string $app_cfg
 	 * The path/name of the config file to be read.
 	 */
-	public function configGetOpt($create = TRUE, $app_cfg = 'app_config.json') {
+	public function configGetOpt($create = TRUE, $app_cfg = NULL) {
 		// Create the GetOpt object
 		if ($create || !$this->getopt) {
 			$this->getopt = $this->createGetOpt();
@@ -135,8 +153,8 @@ class Config {
 	 *
 	 * @return \stdClass
 	 */
-	public function readAppConfig($filename = 'app_config.json') {
-		$cfg = json_decode(file_get_contents($filename));
+	public function readAppConfig($filename = NULL) {
+		$cfg = json_decode(file_get_contents($this->resolveConfigFile($filename)));
 		if (!$cfg) {
 			$cfg = (object) [];
 		}
